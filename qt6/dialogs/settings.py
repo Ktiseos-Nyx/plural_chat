@@ -31,11 +31,23 @@ class SettingsDialog(QDialog):
         """Set up the user interface."""
         layout = QVBoxLayout(self)
 
+        # Set larger font for labels
+        label_font = QFont()
+        label_font.setPointSize(11)
+
         # Theme settings
         theme_group = QGroupBox("Appearance")
+        theme_group.setFont(label_font)
         theme_layout = QFormLayout()
+        theme_layout.setLabelAlignment(Qt.AlignmentFlag.AlignRight)
 
         self.theme_combo = QComboBox()
+        self.theme_combo.setMinimumHeight(35)
+        self.theme_combo.setMinimumWidth(250)
+        # Make the text bigger and more readable
+        combo_font = QFont()
+        combo_font.setPointSize(12)
+        self.theme_combo.setFont(combo_font)
         themes = self.theme_manager.get_available_themes()
         for theme_id, theme_name in themes:
             self.theme_combo.addItem(theme_name, theme_id)
@@ -46,14 +58,22 @@ class SettingsDialog(QDialog):
 
         # Font settings
         font_group = QGroupBox("Font")
+        font_group.setFont(label_font)
         font_layout = QFormLayout()
+        font_layout.setLabelAlignment(Qt.AlignmentFlag.AlignRight)
 
         self.font_family_combo = QFontComboBox()
+        self.font_family_combo.setMinimumHeight(35)
+        self.font_family_combo.setMinimumWidth(250)
+        self.font_family_combo.setFont(combo_font)
         font_layout.addRow("Font Family:", self.font_family_combo)
 
         self.font_size_spin = QSpinBox()
         self.font_size_spin.setRange(8, 24)
         self.font_size_spin.setValue(10)
+        self.font_size_spin.setMinimumHeight(35)
+        self.font_size_spin.setMinimumWidth(100)
+        self.font_size_spin.setFont(combo_font)
         font_layout.addRow("Font Size:", self.font_size_spin)
 
         font_group.setLayout(font_layout)
@@ -61,6 +81,7 @@ class SettingsDialog(QDialog):
 
         # System settings
         system_group = QGroupBox("System")
+        system_group.setFont(label_font)
         system_layout = QFormLayout()
 
         info_label = QLabel("System configuration options will be added here")
