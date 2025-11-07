@@ -22,8 +22,42 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
+// Types for security endpoints
+export interface LoginRequest {
+  username: string;
+  password: string;
+  totp_code?: string;
+  backup_code?: string;
+}
+
+export interface LoginResponse {
+  access_token?: string;
+  token_type: string;
+  requires_2fa: boolean;
+  user_id?: number;
+  message?: string;
+}
+
+export interface TOTPSetupResponse {
+  secret: string;
+  qr_code: string;
+  backup_codes: string[];
+  message: string;
+}
+
+export interface AuditLog {
+  id: number;
+  event_type: string;
+  category: string;
+  description?: string;
+  ip_address?: string;
+  success: boolean;
+  timestamp: string;
+}
+
 // Auth API
 export const authAPI = {
+  // Legacy PluralKit login
   login: async (pkToken: string) => {
     const response = await api.post<User>('/auth/login', { pk_token: pkToken });
     localStorage.setItem('pk_token', pkToken);
@@ -32,6 +66,7 @@ export const authAPI = {
 
   logout: () => {
     localStorage.removeItem('pk_token');
+    localStorage.removeItem('access_token');
   },
 
   verifyToken: async () => {
@@ -41,6 +76,67 @@ export const authAPI = {
 
   syncFromPluralKit: async () => {
     const response = await api.post('/auth/sync-pluralkit');
+    return response.data;
+  },
+};
+
+// Security API (username/password + 2FA)
+export const securityAPI = {
+  // Login with username/password
+  login: async (data: LoginRequest): Promise<LoginResponse> => {
+    const response = await api.post<LoginResponse>('/security/login', data);
+    if (response.data.access_token) {
+      localStorage.setItem('access_token', response.data.access_token);
+    }
+    return response.data;
+  },
+
+  // 2FA setup
+  setup2FA: async (): Promise<TOTPSetupResponse> => {
+    const response = await api.post<TOTPSetupResponse>('/security/2fa/setup');
+    return response.data;
+  },
+
+  // Enable 2FA
+  enable2FA: async (code: string): Promise<{ success: boolean; message: string }> => {
+    const response = await api.post('/security/2fa/enable', { code });
+    return response.data;
+  },
+
+  // Disable 2FA
+  disable2FA: async (password?: string, totp_code?: string): Promise<{ success: boolean; message: string }> => {
+    const response = await api.post('/security/2fa/disable', { password, totp_code });
+    return response.data;
+  },
+
+  // Get 2FA status
+  get2FAStatus: async (): Promise<{ enabled: boolean; backup_codes_remaining: number }> => {
+    const response = await api.get('/security/2fa/status');
+    return response.data;
+  },
+
+  // Regenerate backup codes
+  regenerateBackupCodes: async (code: string): Promise<{ success: boolean; backup_codes: string[]; message: string }> => {
+    const response = await api.post('/security/2fa/backup-codes/regenerate', { code });
+    return response.data;
+  },
+
+  // Get audit logs
+  getAuditLogs: async (limit = 50, category?: string, days = 30): Promise<AuditLog[]> => {
+    const params = new URLSearchParams({
+      limit: limit.toString(),
+      days: days.toString(),
+    });
+    if (category) {
+      params.append('category', category);
+    }
+    const response = await api.get<AuditLog[]>(`/security/audit-logs?${params}`);
+    return response.data;
+  },
+
+  // Get security logs only
+  getSecurityLogs: async (limit = 50): Promise<AuditLog[]> => {
+    const response = await api.get<AuditLog[]>(`/security/audit-logs/security?limit=${limit}`);
     return response.data;
   },
 };
