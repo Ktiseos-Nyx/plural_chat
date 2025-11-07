@@ -20,18 +20,40 @@ The Plural Chat web edition is located in the `web/` directory. Please see the c
 
 ## ✨ Key Features
 
-### Authentication & Security
-- **Multiple login methods**: Username/password, OAuth (Discord, Google, GitHub), and optional PluralKit integration
-- **Email verification**: Secure account creation with email verification
-- **Optional 2FA**: Two-factor authentication for enhanced security
-- **Encrypted storage**: Fernet encryption for sensitive data
+### 🎭 Character/Persona System ⭐ MAIN FEATURE!
+- **Create unlimited characters** - No external service needed!
+- **Full character profiles** - Name, pronouns, avatar, color, bio, proxy tags
+- **Easy management** - Create, edit, delete via API or commands
+- **Quick switching** - `/switch CharacterName` or auto-switch with proxy tags
+- **100% independent** - No PluralKit or external service required!
+- **Perfect for:**
+  - 🎭 Roleplayers with multiple characters
+  - ✍️ Writers developing character voices
+  - 👥 Plural systems managing members
+  - 🎮 Gamers with different personas
+  - 🎨 Anyone wanting multiple chat profiles!
+
+**📖 [Complete Character System Guide →](CHARACTER_SYSTEM.md)**
 
 ### Chat & Communication
 - **Real-time messaging**: WebSocket-based instant messaging
-- **Multi-persona support**: Chat as different characters/personas/members
-- **Discord-style commands**: `/member`, `/switch`, `/generate`, `/help`, and more
-- **Optional proxy tags**: Automatic persona detection (optional feature)
-- **Optional PluralKit sync**: Import existing PK data if you use it (not required!)
+- **Character-based chat**: Message as any of your created characters
+- **Discord-style commands**: `/switch`, `/member`, `/generate`, `/help`, and more
+- **Proxy tag auto-switching**: Type `luna: hello!` → auto-switches to Luna
+- **Export chat logs**: Download conversations in JSON, CSV, or TXT
+
+### Authentication & Security
+- **Multiple login methods**: Username/password, OAuth (Discord, Google, GitHub)
+- **Email verification**: Secure account creation
+- **Optional 2FA**: Two-factor authentication for enhanced security
+- **Encrypted storage**: Fernet encryption for sensitive data
+
+### Optional: PluralKit Import
+- **Already have a PluralKit system?** Import it with one API call!
+- Imports: members, avatars, proxy tags, colors, descriptions
+- **Fully optional** - Create characters manually if you prefer
+- **One-way or sync** - Your choice!
+- [Learn more about PK sync →](web/FEATURES_ROADMAP.md#pluralkit-integration)
 
 ### AI Image Generation
 - **Stable Diffusion integration**: Connect to Automatic1111, Forge UI, or ComfyUI
@@ -89,13 +111,20 @@ One of the standout features! Connect your temporary GPU rental to Plural Chat:
 
 ## 📖 Documentation
 
+**Start Here:**
+- **[Character System Guide](CHARACTER_SYSTEM.md)** ⭐ - Create and manage characters
+- **[Deployment Guide](DEPLOYMENT.md)** - Railway, Docker, VPS, Cloudflare Tunnel
 - **[Web Edition Docs](web/README.md)** - Main documentation
-- **[Getting Started Guide](web/GETTING_STARTED.md)** - First-time setup
-- **[Deployment Guide](web/DEPLOYMENT.md)** - Production deployment
+
+**Guides:**
+- **[AI Generation Guide](AI_GENERATION_GUIDE.md)** - Stable Diffusion + GPU rentals
+- **[Getting Started](web/GETTING_STARTED.md)** - First-time setup
+- **[Admin Guide](web/ADMIN_GUIDE.md)** - Admin panel "for numptys"
+
+**Technical:**
 - **[Authentication Design](web/AUTHENTICATION_REDESIGN.md)** - Auth system overview
 - **[Security Documentation](web/SECURITY.md)** - Security best practices
 - **[Features Roadmap](web/FEATURES_ROADMAP.md)** - All features documented
-- **[AI Generation Guide](AI_GENERATION_GUIDE.md)** - Stable Diffusion integration
 
 ## 🔧 Technology Stack
 
@@ -175,27 +204,30 @@ For third-party components and attributions, see [NOTICES.md](NOTICES.md).
 
 ## ⚡ What Makes This Special?
 
+### 🎭 It's Like Geocities for Your Chat Personas!
+
+Remember when you could customize everything? That energy, but for chat:
+
+- **Create as many characters as you want** - No limits, no external services
+- **Customize everything** - Colors, avatars, bios, pronouns
+- **Switch instantly** - Be whoever you want, whenever
+- **No gatekeeping** - Not just for plural systems!
+- **Your data, your server** - Self-hostable, open source
+
+**It's MSN Messenger meets forum roleplay meets personal expression!**
+
 ### "Hold Your Virtual Beer" Moment 🍺
 
 The ephemeral AI image generation feature is **perfect** for GPU rental sessions:
 
 1. 🎮 Rent a GPU for 1 hour ($0.20-0.50)
 2. 🔗 Connect to Plural Chat
-3. 🎨 Generate member portraits, headspace art, etc.
+3. 🎨 Generate character portraits, scenes, anything!
 4. 💬 Share generations in chat
 5. 🗑️ Everything auto-deletes after 24 hours
 6. 💸 Stop the GPU rental when done
 
 **No permanent storage bloat. No wasted space. Just pure creative fun!**
-
-### Authentication Done Right
-
-No more PluralKit-only login! Choose your method:
-- 🔐 Username & password (bcrypt hashed)
-- 🎮 Discord OAuth
-- 🌐 Google OAuth
-- 💻 GitHub OAuth
-- 🔗 Optional PluralKit sync (not required!)
 
 ### Security First
 
