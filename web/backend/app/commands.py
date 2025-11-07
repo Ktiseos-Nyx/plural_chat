@@ -719,6 +719,204 @@ async def cmd_sddisconnect(user_id: int, args: List[str], db: Session) -> str:
     return "✅ Disconnected from Stable Diffusion API"
 
 
+# ============================================================================
+# AI Character Commands
+# ============================================================================
+
+@registry.register(
+    "ai",
+    "AI character management",
+    "/ai <create|configure|toggle|test> [args]",
+    aliases=["bot"]
+)
+async def cmd_ai(user_id: int, args: List[str], db: Session) -> str:
+    """Manage AI characters"""
+    if not args:
+        return (
+            "**AI Character Commands:**\n\n"
+            "**Create AI Character:**\n"
+            "`/ai create <name> <provider> <api_key> [personality]`\n"
+            "  Providers: gemini, openai, claude, ollama\n\n"
+            "**Configure:**\n"
+            "`/ai configure <name> personality <text>` - Set personality\n"
+            "`/ai configure <name> model <model>` - Set model\n\n"
+            "**Control:**\n"
+            "`/ai toggle <name>` - Enable/disable AI\n"
+            "`/ai test <name> <message>` - Test AI response\n\n"
+            "**Examples:**\n"
+            "`/ai create Assistant gemini your_api_key \"Helpful and friendly\"`\n"
+            "`/ai create Luna gemini key \"You are Luna, a wise wizard\"`\n"
+            "`/ai test Luna what is your wisdom?`"
+        )
+
+    subcommand = args[0].lower()
+
+    if subcommand == "create":
+        return await _ai_create(user_id, args[1:], db)
+    elif subcommand == "configure":
+        return await _ai_configure(user_id, args[1:], db)
+    elif subcommand == "toggle":
+        return await _ai_toggle(user_id, args[1:], db)
+    elif subcommand == "test":
+        return await _ai_test(user_id, args[1:], db)
+    else:
+        return f"❌ Unknown subcommand: {subcommand}. Use `/ai` for help."
+
+
+async def _ai_create(user_id: int, args: List[str], db: Session) -> str:
+    """Create AI character"""
+    if len(args) < 3:
+        return "❌ Usage: `/ai create <name> <provider> <api_key> [personality]`"
+
+    name = args[0]
+    provider = args[1].lower()
+    api_key = args[2]
+
+    # Personality is everything after api_key
+    personality = " ".join(args[3:]) if len(args) > 3 else f"You are {name}, a helpful assistant."
+
+    # Validate provider
+    valid_providers = ["gemini", "openai", "claude", "ollama"]
+    if provider not in valid_providers:
+        return f"❌ Invalid provider. Choose from: {', '.join(valid_providers)}"
+
+    # Check if character name already exists
+    existing = db.query(models.Member).filter(
+        models.Member.user_id == user_id,
+        models.Member.name == name
+    ).first()
+
+    if existing:
+        return f"❌ Character '{name}' already exists!"
+
+    # Create AI character
+    member = models.Member(
+        user_id=user_id,
+        name=name,
+        color="#4285F4",  # Default blue
+        description=f"AI character powered by {provider}",
+        is_ai=True,
+        ai_provider=provider,
+        ai_personality=personality,
+        ai_enabled=True
+    )
+
+    # Encrypt and store API key (if not ollama - it's local)
+    if provider != "ollama":
+        member.set_ai_api_key(api_key)
+
+    db.add(member)
+    db.commit()
+
+    return (
+        f"✅ **AI Character Created!**\n\n"
+        f"**Name:** {name}\n"
+        f"**Provider:** {provider}\n"
+        f"**Personality:** {personality}\n\n"
+        f"💬 Mention **@{name}** in chat to talk to them!\n"
+        f"🧪 Test with: `/ai test {name} hello!`"
+    )
+
+
+async def _ai_configure(user_id: int, args: List[str], db: Session) -> str:
+    """Configure AI character"""
+    if len(args) < 3:
+        return "❌ Usage: `/ai configure <name> <field> <value>`"
+
+    name = args[0]
+    field = args[1].lower()
+    value = " ".join(args[2:])
+
+    # Find character
+    member = db.query(models.Member).filter(
+        models.Member.user_id == user_id,
+        models.Member.name == name,
+        models.Member.is_ai == True
+    ).first()
+
+    if not member:
+        return f"❌ AI character '{name}' not found!"
+
+    # Update field
+    if field == "personality":
+        member.ai_personality = value
+        db.commit()
+        return f"✅ Updated personality for {name}"
+    elif field == "model":
+        member.ai_model = value
+        db.commit()
+        return f"✅ Updated model for {name} to {value}"
+    elif field == "apikey":
+        member.set_ai_api_key(value)
+        db.commit()
+        return f"✅ Updated API key for {name}"
+    else:
+        return f"❌ Unknown field: {field}. Use: personality, model, apikey"
+
+
+async def _ai_toggle(user_id: int, args: List[str], db: Session) -> str:
+    """Toggle AI character on/off"""
+    if len(args) < 1:
+        return "❌ Usage: `/ai toggle <name>`"
+
+    name = args[0]
+
+    member = db.query(models.Member).filter(
+        models.Member.user_id == user_id,
+        models.Member.name == name,
+        models.Member.is_ai == True
+    ).first()
+
+    if not member:
+        return f"❌ AI character '{name}' not found!"
+
+    member.ai_enabled = not member.ai_enabled
+    db.commit()
+
+    status = "enabled" if member.ai_enabled else "disabled"
+    return f"✅ AI for {name} is now **{status}**"
+
+
+async def _ai_test(user_id: int, args: List[str], db: Session) -> str:
+    """Test AI character"""
+    if len(args) < 2:
+        return "❌ Usage: `/ai test <name> <message>`"
+
+    name = args[0]
+    test_message = " ".join(args[1:])
+
+    # Find AI character
+    member = db.query(models.Member).filter(
+        models.Member.user_id == user_id,
+        models.Member.name == name,
+        models.Member.is_ai == True
+    ).first()
+
+    if not member:
+        return f"❌ AI character '{name}' not found!"
+
+    if not member.ai_enabled:
+        return f"❌ AI is disabled for {name}. Enable with: `/ai toggle {name}`"
+
+    # Get AI response
+    from .ai_characters import ai_manager
+
+    try:
+        response = await ai_manager.get_response(
+            member=member,
+            message=test_message,
+            conversation_history=[],
+            db=db
+        )
+
+        return (
+            f"**🤖 {name} responds:**\n\n"
+            f"{response}"
+        )
+    except Exception as e:
+        return f"❌ Error testing AI: {str(e)}"
+
+
 # Export the execute function for easy import
 async def execute_command(user_id: int, message: str, db: Session) -> Optional[str]:
     """Execute a command from a message"""

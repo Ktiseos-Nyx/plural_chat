@@ -5,6 +5,8 @@ import socketio
 from typing import Dict, Set
 import logging
 
+from . import models
+
 logger = logging.getLogger(__name__)
 
 # Create Socket.IO server
@@ -151,6 +153,64 @@ async def send_message(sid, data):
         sessions = connection_manager.get_user_sessions(user_id)
         for session_id in sessions:
             await sio_app.emit('message', message_data, room=session_id)
+
+        # Check if message mentions an AI character
+        from .database import SessionLocal
+        from .ai_characters import ai_manager
+        import re
+
+        db = SessionLocal()
+        try:
+            # Find AI characters mentioned in message (@Name or just Name at start)
+            # Get all AI characters for this user
+            ai_characters = db.query(models.Member).filter(
+                models.Member.user_id == int(user_id),
+                models.Member.is_ai == True,
+                models.Member.ai_enabled == True
+            ).all()
+
+            mentioned_ai = None
+            for ai_char in ai_characters:
+                # Check for @Name or Name: at start
+                if (f"@{ai_char.name}" in content or
+                    content.lower().startswith(ai_char.name.lower() + ":") or
+                    content.lower().startswith(ai_char.name.lower() + " ")):
+                    mentioned_ai = ai_char
+                    break
+
+            if mentioned_ai:
+                # Get recent conversation history
+                recent_messages = db.query(models.Message).join(models.Member).filter(
+                    models.Member.user_id == int(user_id)
+                ).order_by(models.Message.timestamp.desc()).limit(10).all()
+
+                # Get AI response
+                ai_response = await ai_manager.get_response(
+                    member=mentioned_ai,
+                    message=content,
+                    conversation_history=list(reversed(recent_messages)),
+                    db=db
+                )
+
+                if ai_response:
+                    # Send AI response as that character
+                    ai_message = {
+                        'id': 0,
+                        'member_id': mentioned_ai.id,
+                        'content': ai_response,
+                        'timestamp': None,
+                        'member': {
+                            'id': mentioned_ai.id,
+                            'name': mentioned_ai.name,
+                            'color': mentioned_ai.color or '#4285F4'
+                        }
+                    }
+
+                    # Broadcast AI response
+                    for session_id in sessions:
+                        await sio_app.emit('message', ai_message, room=session_id)
+        finally:
+            db.close()
 
         return {'success': True}
 

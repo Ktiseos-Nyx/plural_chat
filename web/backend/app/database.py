@@ -83,7 +83,7 @@ class User(Base):
 
 
 class Member(Base):
-    """System member"""
+    """System member / AI character"""
     __tablename__ = "members"
 
     id = Column(Integer, primary_key=True, index=True)
@@ -98,9 +98,28 @@ class Member(Base):
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
+    # AI character fields
+    is_ai = Column(Boolean, default=False)  # Is this an AI-powered character?
+    ai_provider = Column(String, nullable=True)  # gemini, openai, claude, ollama, etc.
+    ai_model = Column(String, nullable=True)  # Specific model (e.g., "gemini-pro", "gpt-4")
+    ai_personality = Column(Text, nullable=True)  # System prompt / personality description
+    ai_api_key_encrypted = Column(LargeBinary, nullable=True)  # Encrypted API key
+    ai_enabled = Column(Boolean, default=True)  # Can toggle AI on/off without deleting
+
     # Relationships
     user = relationship("User", back_populates="members")
     messages = relationship("Message", back_populates="member", cascade="all, delete-orphan")
+
+    def set_ai_api_key(self, api_key: str):
+        """Encrypt and store AI API key"""
+        if api_key:
+            self.ai_api_key_encrypted = cipher.encrypt(api_key.encode())
+
+    def get_ai_api_key(self) -> str:
+        """Decrypt and return AI API key"""
+        if self.ai_api_key_encrypted:
+            return cipher.decrypt(self.ai_api_key_encrypted).decode()
+        return None
 
 
 class Message(Base):

@@ -42,6 +42,19 @@ The Plural Chat web edition is located in the `web/` directory. Please see the c
 - **Proxy tag auto-switching**: Type `luna: hello!` → auto-switches to Luna
 - **Export chat logs**: Download conversations in JSON, CSV, or TXT
 
+### 🤖 AI Characters (NEW!)
+- **Add AI-powered characters** - Chat with LLM-powered bots!
+- **Multiple providers**: Google Gemini (FREE!), OpenAI, Claude, Ollama (local)
+- **Custom personalities**: Create assistants, roleplay partners, writing helpers
+- **Automatic responses**: Mention @BotName and they respond
+- **Perfect for:**
+  - 💬 Personal assistants
+  - 🎭 Roleplay NPCs
+  - ✍️ Writing partners
+  - 🔍 Q&A helpers
+
+**[📖 AI Characters Guide →](AI_CHARACTERS_GUIDE.md)**
+
 ### Authentication & Security
 - **Multiple login methods**: Username/password, OAuth (Discord, Google, GitHub)
 - **Email verification**: Secure account creation
@@ -113,11 +126,12 @@ One of the standout features! Connect your temporary GPU rental to Plural Chat:
 
 **Start Here:**
 - **[Character System Guide](CHARACTER_SYSTEM.md)** ⭐ - Create and manage characters
+- **[AI Characters Guide](AI_CHARACTERS_GUIDE.md)** 🤖 - Add LLM-powered bots!
 - **[Deployment Guide](DEPLOYMENT.md)** - Railway, Docker, VPS, Cloudflare Tunnel
 - **[Web Edition Docs](web/README.md)** - Main documentation
 
 **Guides:**
-- **[AI Generation Guide](AI_GENERATION_GUIDE.md)** - Stable Diffusion + GPU rentals
+- **[AI Image Generation](AI_GENERATION_GUIDE.md)** - Stable Diffusion + GPU rentals
 - **[Getting Started](web/GETTING_STARTED.md)** - First-time setup
 - **[Admin Guide](web/ADMIN_GUIDE.md)** - Admin panel "for numptys"
 
