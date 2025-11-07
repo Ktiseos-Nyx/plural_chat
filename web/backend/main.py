@@ -10,7 +10,7 @@ from contextlib import asynccontextmanager
 import socketio
 
 from app.database import engine, Base
-from app.routers import auth, members, messages
+from app.routers import auth, members, messages, admin
 from app.websocket import sio_app, connection_manager
 
 # Database initialization
@@ -48,6 +48,7 @@ app.mount("/avatars", StaticFiles(directory="avatars"), name="avatars")
 app.include_router(auth.router, prefix="/auth", tags=["auth"])
 app.include_router(members.router, prefix="/members", tags=["members"])
 app.include_router(messages.router, prefix="/messages", tags=["messages"])
+app.include_router(admin.router, prefix="/admin", tags=["admin"])
 
 @app.get("/")
 async def root():

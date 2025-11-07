@@ -2,9 +2,14 @@
 Messages management router
 """
 from fastapi import APIRouter, Depends, HTTPException, status, Query
+from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
-from sqlalchemy import desc
-from typing import List
+from sqlalchemy import desc, and_
+from typing import List, Optional
+from datetime import datetime
+import json
+import csv
+import io
 
 from ..database import get_db
 from .. import models, schemas
@@ -85,3 +90,162 @@ async def delete_message(
     db.delete(message)
     db.commit()
     return None
+
+
+@router.get("/export/{format}")
+async def export_messages(
+    format: str,
+    start_date: Optional[str] = Query(None, description="Start date (YYYY-MM-DD)"),
+    end_date: Optional[str] = Query(None, description="End date (YYYY-MM-DD)"),
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Export chat logs in various formats
+
+    Supported formats:
+    - json: Structured JSON with member data
+    - csv: CSV format (timestamp, member, message)
+    - txt: Plain text format (readable)
+    """
+    if format not in ["json", "csv", "txt"]:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Format must be json, csv, or txt"
+        )
+
+    # Build query
+    query = db.query(models.Message).join(models.Member).filter(
+        models.Member.user_id == current_user.id,
+        models.Message.is_deleted == False
+    )
+
+    # Apply date filters
+    if start_date:
+        try:
+            start_dt = datetime.fromisoformat(start_date)
+            query = query.filter(models.Message.timestamp >= start_dt)
+        except ValueError:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid start_date format. Use YYYY-MM-DD"
+            )
+
+    if end_date:
+        try:
+            end_dt = datetime.fromisoformat(end_date)
+            query = query.filter(models.Message.timestamp <= end_dt)
+        except ValueError:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid end_date format. Use YYYY-MM-DD"
+            )
+
+    # Get messages
+    messages = query.order_by(models.Message.timestamp).all()
+
+    # Generate filename
+    filename_date = datetime.now().strftime("%Y%m%d_%H%M%S")
+    filename = f"plural_chat_export_{filename_date}.{format}"
+
+    # Export based on format
+    if format == "json":
+        return _export_json(messages, filename)
+    elif format == "csv":
+        return _export_csv(messages, filename)
+    else:  # txt
+        return _export_txt(messages, filename)
+
+
+def _export_json(messages, filename):
+    """Export as JSON"""
+    data = {
+        "export_date": datetime.now().isoformat(),
+        "message_count": len(messages),
+        "messages": [
+            {
+                "id": msg.id,
+                "timestamp": msg.timestamp.isoformat(),
+                "member": {
+                    "id": msg.member.id,
+                    "name": msg.member.name,
+                    "pronouns": msg.member.pronouns,
+                    "color": msg.member.color
+                },
+                "content": msg.content,
+                "edited_at": msg.edited_at.isoformat() if msg.edited_at else None
+            }
+            for msg in messages
+        ]
+    }
+
+    json_str = json.dumps(data, indent=2, ensure_ascii=False)
+
+    return StreamingResponse(
+        io.BytesIO(json_str.encode('utf-8')),
+        media_type="application/json",
+        headers={"Content-Disposition": f"attachment; filename={filename}"}
+    )
+
+
+def _export_csv(messages, filename):
+    """Export as CSV"""
+    output = io.StringIO()
+    writer = csv.writer(output)
+
+    # Header
+    writer.writerow(["Timestamp", "Member", "Pronouns", "Message", "Edited"])
+
+    # Data
+    for msg in messages:
+        writer.writerow([
+            msg.timestamp.strftime("%Y-%m-%d %H:%M:%S"),
+            msg.member.name,
+            msg.member.pronouns or "",
+            msg.content,
+            "Yes" if msg.edited_at else "No"
+        ])
+
+    output.seek(0)
+
+    return StreamingResponse(
+        io.BytesIO(output.getvalue().encode('utf-8')),
+        media_type="text/csv",
+        headers={"Content-Disposition": f"attachment; filename={filename}"}
+    )
+
+
+def _export_txt(messages, filename):
+    """Export as plain text"""
+    lines = [
+        "=" * 60,
+        "Plural Chat Export",
+        f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
+        f"Messages: {len(messages)}",
+        "=" * 60,
+        "",
+    ]
+
+    for msg in messages:
+        timestamp = msg.timestamp.strftime("%Y-%m-%d %H:%M:%S")
+        member_info = f"{msg.member.name}"
+        if msg.member.pronouns:
+            member_info += f" ({msg.member.pronouns})"
+
+        lines.append(f"[{timestamp}] {member_info}:")
+        lines.append(f"  {msg.content}")
+        if msg.edited_at:
+            lines.append(f"  (edited {msg.edited_at.strftime('%Y-%m-%d %H:%M:%S')})")
+        lines.append("")
+
+    lines.append("=" * 60)
+    lines.append(f"End of export ({len(messages)} messages)")
+    lines.append("=" * 60)
+
+    content = "\n".join(lines)
+
+    return StreamingResponse(
+        io.BytesIO(content.encode('utf-8')),
+        media_type="text/plain",
+        headers={"Content-Disposition": f"attachment; filename={filename}"}
+    )

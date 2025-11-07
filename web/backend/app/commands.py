@@ -678,16 +678,21 @@ async def cmd_generate(user_id: int, args: List[str], db: Session) -> str:
     # Validate dimensions
     if width % 64 != 0 or height % 64 != 0:
         return "❌ Width and height must be multiples of 64!"
+
+    # VRAM warning for large images
+    vram_warning = ""
     if width > 1024 or height > 1024:
-        return "❌ Max size is 1024x1024!"
+        vram_warning = "\n⚠️  **Large image size!** This may require significant VRAM (12GB+)."
+    if width > 1536 or height > 1536:
+        vram_warning = "\n⚠️  **Very large image!** This may require 16GB+ VRAM and take several minutes."
 
     try:
         # Generate image
         return f"🎨 **Generating...**\n\n" \
                f"**Prompt:** {prompt}\n" \
                f"**Size:** {width}x{height}\n" \
-               f"**Steps:** {steps}\n\n" \
-               f"This may take 30-120 seconds depending on your GPU...\n\n" \
+               f"**Steps:** {steps}{vram_warning}\n\n" \
+               f"This may take 30 seconds to several minutes depending on your GPU...\n\n" \
                f"*Note: Image will be posted as a new message when ready.*"
 
         # TODO: Actual generation happens in background task

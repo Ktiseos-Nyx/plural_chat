@@ -1,201 +1,145 @@
-# 🗨️ Plural Chat
+# 🌐 Plural Chat - Web Edition
 
-A desktop chat application designed specifically for plural systems, featuring PluralKit integration and intelligent proxy detection.
+A modern web-based chat application designed specifically for plural systems, featuring PluralKit integration, AI image generation, and real-time communication.
 
-## 📑 Table of Contents
-
-- [✨ Features](#-features)
-- [📸 Screenshots](#-screenshots)
-- [⚠️ Known Issues](#️-known-issues)
-- [📋 Project Documentation](#-project-documentation)
-- [🚀 Quick Start](#-quick-start)
-  - [Prerequisites](#prerequisites)
-  - [Installation](#installation)
-  - [First Time Setup](#first-time-setup)
-- [🎯 Proxy Detection](#-proxy-detection)
-- [🔧 PluralKit Integration](#-pluralkit-integration)
-  - [API Token Setup](#api-token-setup)
-  - [What Gets Imported](#what-gets-imported)
-- [📁 File Structure](#-file-structure)
-- [🎨 Themes](#-themes)
-- [📤 Sharing Systems](#-sharing-systems)
-- [🛠️ Development](#️-development)
-  - [Tech Stack](#tech-stack)
-  - [Project Structure](#project-structure)
-- [🤝 Contributing](#-contributing)
-- [📄 License](#-license)
-- [💝 Credits](#-credits)
-- [🔗 Links](#-links)
-
-## ✨ Features
-
-- **🏠 Local Desktop Chat** - Private conversations between system members
-- **🔗 PluralKit Integration** - Import members, avatars, and proxy tags from your PK system
-- **🎯 Smart Proxy Detection** - Automatic member switching based on proxy patterns
-- **💾 SQLite Database** - Fast, reliable local storage
-- **🎨 Modern Themes** - 15+ beautiful themes via ttkbootstrap
-- **📤 Export/Import** - Share system configurations with other plural folks
-- **🖼️ Avatar Support** - Display member avatars in chat
-- **📔 Personal Diary** - Private journal system for individual members
-
-## 📸 Screenshots
-
-| Main Chat Interface | Settings & Custom Themes | Personal Diary System |
-| :-----------------: | :----------------------: | :-------------------: |
-| <img src="screenshots/main_interface.png" alt="Main chat interface with member list and conversation history" width="250"> | <img src="screenshots/settings_themes.png" alt="Settings dialog with theme selection and personalized greeting options" width="250"> | <img src="screenshots/diary_system.png" alt="Personal diary system for individual member thoughts and memories" width="250"> |
-| **Active Conversations** | **Help Documentation** | **Theme Showcase** |
-| <img src="screenshots/active_chat.png" alt="Live conversation showing multiple system members chatting" width="250"> | <img src="screenshots/help_documentation.png" alt="Comprehensive help system with detailed feature documentation" width="250"> | <img src="screenshots/theme_showcase.png" alt="Beautiful ttkbootstrap themes including Criss's custom vapor-dark theme" width="250"> |
-
-## ⚠️ Known Issues
-
-- **Private Members**: Private members cannot have their avatars downloaded via API (this is expected behavior for privacy protection)
-- **Minor "FINAL STATUS" errors**: Occasional minor errors during sync operations (under investigation)
-- **Sample Members**: Sample members are not added upon developer cleanup (manual setup required for fresh installations)
-
-## 📋 Project Documentation
-
-- **[Installation Guide](INSTALLATION.md)** - Detailed installation instructions for all platforms
-- **[Contributing Guide](CONTRIBUTING.md)** - How to contribute to the project
-- **[Code of Conduct](CODE_OF_CONDUCT.md)** - Community guidelines and standards
-- **[Security Policy](SECURITY.md)** - Security practices and vulnerability reporting
-- **[Development Roadmap](DEVELOPMENT_ROADMAP.md)** - Future features and development plans
-- **[Community Disclaimer](DISCLAIMER.md)** - Our inclusive ethos and stance on plural community drama
-- **[Third-Party Notices](NOTICES.md)** - Licensing and attribution information
+> **Note:** This branch contains the web edition. The desktop versions have been moved to separate branches.
 
 ## 🚀 Quick Start
 
-### Prerequisites
+The Plural Chat web edition is located in the `web/` directory. Please see the comprehensive documentation there:
 
-- Python 3.8 or higher
-- pip (Python package installer)
+**📖 [Web Edition Documentation](web/README.md)**
 
-### Installation
+## ✨ Key Features
 
-1. **Clone or download** this repository
-   ```bash
-   https://github.com/Ktiseos-Nyx/plural_chat.git
-   ```
-3. **Install:**
-   ```bash
-     cd plural_chat
-     pip install .
-   ```
-4. **Run the application:**
-   ```bash
-   plural-chat
-   ```
-#### Developer Mode Options
+### Authentication & Security
+- **Multiple login methods**: Username/password, OAuth (Discord, Google, GitHub), and optional PluralKit integration
+- **Email verification**: Secure account creation with email verification
+- **Optional 2FA**: Two-factor authentication for enhanced security
+- **Encrypted storage**: Fernet encryption for sensitive data
 
-   ```bash
-  git clone https://github.com/Ktiseos-Nyx/plural_chat.git
-  cd plural_chat
-  pip install -e .
-  plural-chat
-   ```
+### Chat & Communication
+- **Real-time messaging**: WebSocket-based instant messaging
+- **Discord-style commands**: `/member`, `/switch`, `/generate`, `/help`, and more
+- **Member proxying**: Automatic member detection via proxy tags
+- **PluralKit sync**: Import your existing PK system data
 
-### First Time Setup
+### AI Image Generation
+- **Stable Diffusion integration**: Connect to Automatic1111, Forge UI, or ComfyUI
+- **GPU rental support**: Perfect for RunPod and Vast.ai sessions
+- **Ephemeral storage**: Generated images auto-delete after 24 hours
+- **Share in chat**: AI generations posted directly to conversations
 
-1. **Add Members** - Use the Settings → Members tab to add your system members
-2. **Set Avatars** - Add avatar images for visual identification
-3. **PluralKit Sync** (Optional) - Import your existing PK system data via PK's API or via Json export via pk;export on Discord.
-4. **Choose Theme** - Pick from 15+ modern themes in Settings
+### Performance & Caching
+- **Redis caching**: 10-100x performance improvement
+- **Smart TTLs**: Sessions (30 days), members (1 hour), messages (15 minutes)
+- **Rate limiting**: Protection against abuse
+- **WebP compression**: Efficient image storage
 
-## 🎯 Proxy Detection
-
-If you've imported from PluralKit or set up proxy tags, the app will automatically detect them:
-
-- Type `member: hello there` → Auto-selects "member" and sends "hello there"
-- Visual feedback shows when proxy is detected
-- Clean messages without proxy tags in chat history
-
-### Future Foward Issue
-Not everyone uses member: proxy - so being that this was developed in less than 12 hours, it'd be amazing if anyone would want to help out in robustish level fix this!
-
-## 🔧 PluralKit Integration
-
-### API Token Setup
-
-1. Get your PK token from [PluralKit Dashboard](https://dash.pluralkit.me/dash/token)
-2. Click "PluralKit Sync" in the app
-3. Enter your token and test connection
-4. Choose "Sync Members" or "Full Import"
-
-### What Gets Imported
-
-- ✅ Member names and display names
-- ✅ Pronouns and descriptions  
-- ✅ Proxy tags for auto-detection
-- ✅ Avatar images (downloaded locally)
-- ✅ Member colors and metadata
-- ✅ Chat history (if present in export)
-
-## 📁 File Structure
-
-- `app.db` - Application settings and preferences
-- `system.db` - Your system's members and chat history  
-- `avatars/` - Downloaded avatar images
-- `*.json` - Export files for sharing
-
-## 🎨 Themes
-
-Choose from these beautiful themes:
-- superhero, darkly, solar, cyborg, vapor
-- pulse, flatly, journal, litera, lumen
-- minty, morph, sandstone, united, yeti
-
-## 📤 Sharing Systems
-
-**Export your system:**
-- Click "Export System" → Save as JSON
-- Share file with other plural folks
-- Includes members, chat history, and settings
-
-**Import a system:**
-- Click "Import System" → Select JSON file
-- Supports PluralKit exports (auto-detects and converts)
-- Our export format is compatible for re-importing
-
-## 🛠️ Development
-
-### Tech Stack
-
-- **Python 3.8+** - Core language
-- **ttkbootstrap** - Modern UI framework
-- **SQLite** - Local database
-- **Pillow** - Image processing
-- **Requests** - HTTP client for PluralKit API
-- **aiohttp** - Asynchronous HTTP client
-- **aria2p** - High-performance download manager
-
-### Project Structure
+## 📁 Repository Structure
 
 ```
 plural_chat/
-├── main.py                 # Main application
-├── database_manager.py     # SQLite database handling
-├── pluralkit_api.py       # PK API integration
-├── pluralkit_dialog.py    # PK sync UI
-├── pk_export_parser.py    # PK export file parser
-├── member_manager.py      # Member management UI
-├── settings_manager.py    # Settings UI
-├── about_dialog.py        # About dialog
-├── requirements.txt       # Python dependencies
-├── pyproject.toml        # Project configuration
-└── LICENSE               # MIT license
+├── web/                          # Web edition (main application)
+│   ├── backend/                  # FastAPI backend
+│   │   ├── app/
+│   │   │   ├── auth_enhanced.py  # Authentication system
+│   │   │   ├── commands.py       # Discord-style commands
+│   │   │   ├── sd_integration.py # Stable Diffusion API
+│   │   │   ├── media_cache.py    # Ephemeral image storage
+│   │   │   └── ...
+│   │   └── requirements.txt
+│   ├── frontend/                 # Next.js frontend (Lobe UI)
+│   ├── docker-compose.yml
+│   └── README.md                 # ← START HERE
+│
+├── AI_GENERATION_GUIDE.md        # SD integration guide
+├── AUTH_SECURITY_SUMMARY.md      # Security overview
+├── NEW_FEATURES_SUMMARY.md       # Feature summary
+├── WEB_EDITION_COMPLETE.md       # Completion notes
+└── ...
+
 ```
+
+## 🎨 AI Image Generation
+
+One of the standout features! Connect your temporary GPU rental to Plural Chat:
+
+```bash
+/sdconnect a1111 https://your-runpod-url.proxy.runpod.net
+/generate portrait of Riley, purple hair, digital art
+```
+
+**Perfect for:**
+- 🎨 Generating system member portraits
+- 💸 GPU rental sessions (pay per hour)
+- 🗑️ No permanent storage bloat (24hr auto-delete)
+- 👥 Multiple systems sharing one GPU instance
+
+**[Full AI Generation Guide](AI_GENERATION_GUIDE.md)**
+
+## 📖 Documentation
+
+- **[Web Edition Docs](web/README.md)** - Main documentation
+- **[Getting Started Guide](web/GETTING_STARTED.md)** - First-time setup
+- **[Deployment Guide](web/DEPLOYMENT.md)** - Production deployment
+- **[Authentication Design](web/AUTHENTICATION_REDESIGN.md)** - Auth system overview
+- **[Security Documentation](web/SECURITY.md)** - Security best practices
+- **[Features Roadmap](web/FEATURES_ROADMAP.md)** - All features documented
+- **[AI Generation Guide](AI_GENERATION_GUIDE.md)** - Stable Diffusion integration
+
+## 🔧 Technology Stack
+
+### Backend
+- **FastAPI** - Modern async Python web framework
+- **Socket.IO** - Real-time WebSocket communication
+- **SQLAlchemy** - ORM for database
+- **Redis** - Caching and session storage
+- **Bcrypt** - Password hashing
+- **JWT** - Token-based authentication
+
+### Frontend
+- **Next.js 14** - React framework
+- **Lobe UI** - Modern chat interface components
+- **TypeScript** - Type-safe JavaScript
+- **Tailwind CSS** - Utility-first styling
+
+### DevOps
+- **Docker** - Containerization
+- **Docker Compose** - Multi-container orchestration
+- **PostgreSQL** - Production database
+- **Nginx** - Reverse proxy
+
+## 🚀 Deployment
+
+### Quick Deploy
+
+```bash
+cd web
+docker-compose up -d
+```
+
+Visit `http://localhost:3000`
+
+### Production Deployment
+
+See **[Deployment Guide](web/DEPLOYMENT.md)** for:
+- Railway deployment (one-click)
+- VPS deployment (Docker)
+- Environment configuration
+- SSL/HTTPS setup
+- Database migrations
 
 ## 🤝 Contributing
 
-We welcome contributions from the plural community! Whether it's:
+We welcome contributions from the plural community!
 
-- 🐛 Bug reports
-- 💡 Feature suggestions  
-- 🔧 Code improvements
-- 📖 Documentation updates
+- 🐛 **Bug reports** - [GitHub Issues](https://github.com/Ktiseos-Nyx/plural_chat/issues)
+- 💡 **Feature requests** - [GitHub Discussions](https://github.com/Ktiseos-Nyx/plural_chat/discussions)
+- 🔧 **Code contributions** - See [Contributing Guide](CONTRIBUTING.md)
+- 📖 **Documentation** - Help improve our docs
 
-**Please read our [Contributing Guide](CONTRIBUTING.md) and [Code of Conduct](CODE_OF_CONDUCT.md) before getting started.**
-
-**Want to see what's coming next?** Check out our [Development Roadmap](DEVELOPMENT_ROADMAP.md) to see planned features and find areas where you can help!
+Please read our **[Code of Conduct](CODE_OF_CONDUCT.md)** before contributing.
 
 ## 📄 License
 
@@ -208,17 +152,64 @@ For third-party components and attributions, see [NOTICES.md](NOTICES.md).
 - **Created by:** Duskfall Portal Crew
 - **Inspired by:** The amazing plural community
 - **Thanks to:** PluralKit team for the fantastic API
-- **UI Framework:** ttkbootstrap developers
+- **UI Framework:** Lobe Chat UI team
 
 ## 🔗 Links
 
-- **[GitHub Issues](https://github.com/Ktiseos-Nyx/plural_chat/issues)** - Bug reports and feature requests
-- **[GitHub Discussions](https://github.com/Ktiseos-Nyx/plural_chat/discussions)** - Community discussions and Q&A
+- **[GitHub Repository](https://github.com/Ktiseos-Nyx/plural_chat)** - Source code
+- **[GitHub Issues](https://github.com/Ktiseos-Nyx/plural_chat/issues)** - Bug reports
+- **[GitHub Discussions](https://github.com/Ktiseos-Nyx/plural_chat/discussions)** - Community Q&A
 - **[PluralKit](https://pluralkit.me)** - The bot that inspired this project
-- **[ttkbootstrap](https://ttkbootstrap.readthedocs.io)** - Modern tkinter themes
-- **[Support us](https://ko-fi.com/duskfallcrew)** - Help keep development going
-- **[Ktiseos Nyx Discord](https://discord.gg/HhBSvM9gBY)** - Development & AI Discord (Plural Friendly!)
-- **[Earth & Dusk Media Discord](https://discord.gg/5t2kYxt7An)** - Our Twitch & Media Discord (PK enabled!)
+- **[Support us on Ko-fi](https://ko-fi.com/duskfallcrew)** - Help keep development going
+- **[Ktiseos Nyx Discord](https://discord.gg/HhBSvM9gBY)** - Development & AI Discord
+- **[Earth & Dusk Media Discord](https://discord.gg/5t2kYxt7An)** - Twitch & Media Discord
+
+## ⚡ What Makes This Special?
+
+### "Hold Your Virtual Beer" Moment 🍺
+
+The ephemeral AI image generation feature is **perfect** for GPU rental sessions:
+
+1. 🎮 Rent a GPU for 1 hour ($0.20-0.50)
+2. 🔗 Connect to Plural Chat
+3. 🎨 Generate member portraits, headspace art, etc.
+4. 💬 Share generations in chat
+5. 🗑️ Everything auto-deletes after 24 hours
+6. 💸 Stop the GPU rental when done
+
+**No permanent storage bloat. No wasted space. Just pure creative fun!**
+
+### Authentication Done Right
+
+No more PluralKit-only login! Choose your method:
+- 🔐 Username & password (bcrypt hashed)
+- 🎮 Discord OAuth
+- 🌐 Google OAuth
+- 💻 GitHub OAuth
+- 🔗 Optional PluralKit sync (not required!)
+
+### Security First
+
+- Bcrypt password hashing (cost factor 12)
+- Fernet encryption for sensitive tokens
+- JWT with proper expiry
+- Rate limiting against brute force
+- Email verification
+- Optional 2FA
+- Session tracking
+- HTTPS-only in production
+
+**[Full Security Documentation](web/SECURITY.md)**
+
+---
+
+## 🎯 Get Started
+
+Ready to dive in?
+
+1. **[Read the Web Edition Docs](web/README.md)**
+2. **[Follow the Getting Started Guide](web/GETTING_STARTED.md)**
+3. **[Deploy with Docker Compose](web/DEPLOYMENT.md)**
 
 ---
 
