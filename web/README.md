@@ -1,6 +1,6 @@
 # Plural Chat - Web Edition 🌐
 
-A modern, self-hosted web application for plural systems to chat with PluralKit integration. Deploy your own instance for your private group!
+A modern, self-hosted web chat application with multi-persona support, AI characters, and real-time communication. **Perfect for plural systems, roleplayers, writers, small groups, or anyone who wants a personal chat space!**
 
 ![Next.js](https://img.shields.io/badge/Next.js-16-black?logo=next.js)
 ![FastAPI](https://img.shields.io/badge/FastAPI-0.115-009688?logo=fastapi)
@@ -9,12 +9,39 @@ A modern, self-hosted web application for plural systems to chat with PluralKit 
 
 ## ✨ Features
 
-- **Real-time Chat** - WebSocket-powered instant messaging
-- **PluralKit Sync** - One-click import of your system members
+### 🎭 Character System ⭐
+- **Create unlimited characters** - No external service needed!
+- **Full profiles** - Name, pronouns, avatar, color, bio, proxy tags
+- **Easy management** - API and Discord-style commands (`/switch`, `/member`)
+- **Quick switching** - Swap characters instantly or use proxy tags
+- **100% independent** - No PluralKit or external service required!
+
+### 🤖 AI Characters (NEW!)
+- **LLM-powered bots** - Chat with AI characters using Gemini, OpenAI, Claude, or Ollama!
+- **Custom personalities** - Create assistants, roleplay NPCs, writing helpers, Q&A bots
+- **Automatic responses** - Mention `@BotName` and they respond intelligently
+- **Multiple providers** - Google Gemini (FREE!), OpenAI, Claude, or Ollama (local & private)
+- **[📖 AI Characters Guide](../AI_CHARACTERS_GUIDE.md)**
+
+### 💬 Chat & Communication
+- **Real-time messaging** - WebSocket-powered instant chat
+- **Discord-style commands** - `/switch`, `/member`, `/ai`, `/help`, and more
+- **Proxy tag auto-switching** - Type `luna: hello!` → auto-switches to Luna
+- **Export chat logs** - Download conversations in JSON, CSV, or TXT
+
+### 🔗 Optional: PluralKit Import
+- **Already have a PluralKit system?** Import it with one API call!
+- Imports members, avatars, proxy tags, colors, descriptions
+- **Fully optional** - Create characters manually if you prefer
+
+### 🎨 Additional Features
 - **Beautiful UI** - Built with LobeHub UI components
-- **Multi-User** - Multiple systems can connect to the same instance
+- **Multi-User** - Multiple people can use the same instance (5-10 users recommended)
 - **Self-Hosted** - Full control over your data
 - **Easy Deployment** - One-click deploy to Railway or Docker
+- **AI Image Generation** - Connect to Stable Diffusion (Automatic1111/Forge/ComfyUI)
+- **Authentication** - Username/password, OAuth (Discord, Google, GitHub), email verification
+- **Redis Caching** - 10-100x performance boost with smart caching
 
 ## 🚀 Quick Deploy
 
@@ -86,32 +113,55 @@ npm run dev
 
 ### First Time Setup
 
-1. **Get Your PluralKit Token**
-   - Visit https://pluralkit.me/dash
-   - Click "Get API Token"
-   - Copy your token
-
-2. **Login**
+1. **Create an Account**
    - Open your deployed Plural Chat instance
-   - Paste your PluralKit token
-   - Click "Connect to PluralKit"
+   - Sign up with username/password or OAuth (Discord, Google, GitHub)
+   - Verify your email (if enabled)
 
-3. **Sync Your Members**
-   - Click the "Sync" button in the sidebar
-   - Your members and avatars will be imported automatically
+2. **Create Your Characters**
 
-4. **Start Chatting!**
-   - Select a member from the sidebar
+   **Option A: Create Manually** (No external service needed!)
+   ```
+   /member create Luna she/her
+   /member Luna avatar https://example.com/luna.png
+   /member Luna color #9b59b6
+   /member Luna description "A wise character who loves stargazing"
+   ```
+
+   **Option B: Import from PluralKit** (Optional)
+   - Get your PluralKit token from https://pluralkit.me/dash
+   - Use API endpoint: `POST /api/pluralkit/import` with your token
+   - All members, avatars, and proxy tags imported automatically
+
+3. **Start Chatting!**
+   - Select a character from the sidebar
    - Type your message
    - Press Enter to send
+   - Or use proxy tags: `luna: hello everyone!`
+
+4. **Add AI Characters** (Optional)
+   ```
+   /ai create Assistant gemini YOUR_API_KEY "You are a helpful assistant"
+   @Assistant what's the capital of France?
+   ```
+   See the **[AI Characters Guide](../AI_CHARACTERS_GUIDE.md)** for more!
+
+### Useful Commands
+
+- `/switch CharacterName` - Switch active character
+- `/member list` - List all your characters
+- `/member create Name pronouns` - Create new character
+- `/ai create Name provider key personality` - Create AI character
+- `/help` - Show all available commands
 
 ### Multi-User Setup
 
-Each user can login with their own PluralKit token. All messages are visible to everyone connected to the same instance, making it perfect for:
-- Systems communicating with each other
-- Shared headspaces
-- Private plural communities
-- Collaborative system management
+Multiple people can use the same instance! Perfect for:
+- Small friend groups (5-10 people recommended)
+- Shared roleplaying spaces
+- Private communities
+- Discord alternative for small groups
+- Collaborative creative writing
 
 ## 🏗️ Architecture
 
@@ -141,9 +191,13 @@ Each user can login with their own PluralKit token. All messages are visible to 
 - FastAPI
 - SQLAlchemy (ORM)
 - PostgreSQL
+- Redis (Caching & Sessions)
 - Socket.IO (WebSockets)
 - Python-JOSE (JWT Auth)
-- PluralKit API Integration
+- httpx (LLM API Integration)
+- Bcrypt (Password Hashing)
+- Cryptography (Fernet Encryption)
+- Optional: PluralKit API Integration
 
 **Deployment:**
 - Docker & Docker Compose
@@ -207,15 +261,19 @@ web/
 │       ├── store.ts       # Zustand store
 │       ├── api.ts         # API client
 │       └── useWebSocket.ts # WS hook
-├── backend/               # FastAPI application
-│   ├── app/              # Application code
-│   │   ├── routers/     # API routes
-│   │   ├── database.py  # DB models
-│   │   ├── schemas.py   # Pydantic schemas
-│   │   ├── auth.py      # JWT auth
-│   │   ├── pluralkit.py # PK API client
-│   │   └── websocket.py # Socket.IO handlers
-│   └── main.py          # FastAPI entry point
+├── backend/                  # FastAPI application
+│   ├── app/                 # Application code
+│   │   ├── routers/        # API routes
+│   │   ├── database.py     # DB models
+│   │   ├── schemas.py      # Pydantic schemas
+│   │   ├── auth_enhanced.py # Enhanced authentication
+│   │   ├── commands.py     # Discord-style commands
+│   │   ├── ai_characters.py # LLM integration
+│   │   ├── cache.py        # Redis caching
+│   │   ├── pluralkit.py    # PK API client (optional)
+│   │   ├── sd_integration.py # Stable Diffusion
+│   │   └── websocket.py    # Socket.IO handlers
+│   └── main.py             # FastAPI entry point
 └── docker/              # Docker configurations
 ```
 
@@ -231,17 +289,11 @@ cd web/frontend
 npm test
 ```
 
-### Database Migrations
+### Database Schema
 
-```bash
-cd web/backend
+The database schema is automatically created on first startup using SQLAlchemy's `create_all()`. When you add new features or update the code, new columns are automatically added to existing tables.
 
-# Create migration
-alembic revision --autogenerate -m "description"
-
-# Apply migrations
-alembic upgrade head
-```
+**No manual migrations needed!** Just restart the backend and the database will be updated.
 
 ## 🐛 Troubleshooting
 
