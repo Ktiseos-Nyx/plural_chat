@@ -67,8 +67,14 @@ class User(Base):
     last_login = Column(DateTime, nullable=True)
     last_sync = Column(DateTime, nullable=True)
 
+    # 2FA / MFA (Optional TOTP-based authentication)
+    totp_enabled = Column(Boolean, default=False)
+    totp_secret_encrypted = Column(LargeBinary, nullable=True)  # Encrypted TOTP secret
+    backup_codes_encrypted = Column(LargeBinary, nullable=True)  # Encrypted backup codes (JSON)
+
     # Relationships
     members = relationship("Member", back_populates="user", cascade="all, delete-orphan")
+    audit_logs = relationship("AuditLog", back_populates="user", cascade="all, delete-orphan")
 
     def set_pk_token(self, token: str):
         """Encrypt and store PluralKit token"""
@@ -80,6 +86,32 @@ class User(Base):
         if self.pk_token_encrypted:
             return cipher.decrypt(self.pk_token_encrypted).decode()
         return None
+
+    def set_totp_secret(self, secret: str):
+        """Encrypt and store TOTP secret"""
+        if secret:
+            self.totp_secret_encrypted = cipher.encrypt(secret.encode())
+
+    def get_totp_secret(self) -> str:
+        """Decrypt and return TOTP secret"""
+        if self.totp_secret_encrypted:
+            return cipher.decrypt(self.totp_secret_encrypted).decode()
+        return None
+
+    def set_backup_codes(self, codes: list):
+        """Encrypt and store backup codes"""
+        if codes:
+            import json
+            codes_json = json.dumps(codes)
+            self.backup_codes_encrypted = cipher.encrypt(codes_json.encode())
+
+    def get_backup_codes(self) -> list:
+        """Decrypt and return backup codes"""
+        if self.backup_codes_encrypted:
+            import json
+            codes_json = cipher.decrypt(self.backup_codes_encrypted).decode()
+            return json.loads(codes_json)
+        return []
 
 
 class Member(Base):
@@ -150,6 +182,25 @@ class Session(Base):
     expires_at = Column(DateTime, nullable=False)
     last_activity = Column(DateTime, default=datetime.utcnow)
     is_valid = Column(Boolean, default=True)
+
+
+class AuditLog(Base):
+    """Audit log for security events"""
+    __tablename__ = "audit_logs"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=True, index=True)
+    event_type = Column(String, nullable=False, index=True)  # login, logout, 2fa_enabled, password_change, etc.
+    event_category = Column(String, nullable=False, index=True)  # auth, security, profile, admin
+    description = Column(Text, nullable=True)
+    ip_address = Column(String, nullable=True)
+    user_agent = Column(String, nullable=True)
+    success = Column(Boolean, default=True)
+    metadata = Column(Text, nullable=True)  # JSON string for additional data
+    timestamp = Column(DateTime, default=datetime.utcnow, index=True)
+
+    # Relationships
+    user = relationship("User", back_populates="audit_logs")
 
 
 # Dependency to get DB session

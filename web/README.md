@@ -206,13 +206,44 @@ Multiple people can use the same instance! Perfect for:
 
 ## 🔐 Security Features
 
-- **JWT Authentication** - Secure token-based auth
-- **PluralKit Token Encryption** - Tokens stored securely
-- **CORS Protection** - Configurable allowed origins
+### Authentication & Authorization
+- **JWT Authentication** - Secure token-based auth with HS256
+- **Bcrypt Password Hashing** - Industry-standard password protection
+- **OAuth 2.0** - Login with Discord, Google, or GitHub
+- **Email Verification** - Optional email confirmation
+- **Session Management** - Track active sessions with IP/user agent logging
+
+### 🔒 Two-Factor Authentication (Optional)
+- **TOTP-based 2FA** - Authenticator app support (Google Authenticator, Authy, etc.)
+- **QR Code Setup** - Easy scanning for instant setup
+- **Backup Codes** - 8 one-time recovery codes
+- **Optional Security** - Users can enable/disable in profile settings
+- **No SMS/Email** - More secure than SMS-based 2FA
+
+### 📊 Audit Logging
+- **Security Event Tracking** - All logins, 2FA changes, password updates logged
+- **Failed Attempt Monitoring** - Track suspicious login attempts
+- **IP & User Agent Logging** - Full context for security events
+- **User-Accessible Logs** - View your own security history via API
+- **Automatic Cleanup** - Old logs auto-deleted after 90 days
+
+### Data Protection
+- **Fernet Encryption** - PluralKit tokens & AI API keys encrypted at rest
 - **SQL Injection Prevention** - SQLAlchemy parameterized queries
+- **CORS Protection** - Configurable allowed origins
 - **XSS Protection** - React auto-escaping
-- **Avatar Validation** - Whitelist of trusted CDNs
 - **Path Traversal Prevention** - Filename sanitization
+
+### Media & File Security
+- **Ephemeral Storage** - Images auto-deleted after 24 hours
+- **File Size Limits** - Configurable max upload size (default 10MB)
+- **HTTPS-Only** - Rejects non-secure image URLs
+- **Image Validation** - Pillow verification of actual file format
+
+### Rate Limiting
+- **Redis-Based** - Intelligent rate limiting per endpoint
+- **Login Protection** - Prevent brute force attacks
+- **Configurable Limits** - Per-endpoint customization
 
 ## 🌍 Environment Variables
 
