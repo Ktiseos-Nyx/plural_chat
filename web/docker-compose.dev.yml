@@ -1,0 +1,48 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  db:
+    image: postgres:16-alpine
+    container_name: plural_chat_db_dev
+    environment:
+      POSTGRES_USER: plural_chat
+      POSTGRES_PASSWORD: dev_password
+      POSTGRES_DB: plural_chat
+    volumes:
+      - postgres_data_dev:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U plural_chat"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # FastAPI Backend (Development with hot reload)
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: plural_chat_backend_dev
+    environment:
+      DATABASE_URL: postgresql://plural_chat:dev_password@db:5432/plural_chat
+      SECRET_KEY: dev-secret-key-not-for-production
+      CORS_ORIGINS: http://localhost:3000,http://localhost:8000
+    volumes:
+      - ./backend:/app:delegated
+      - avatars_data_dev:/app/avatars
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+    command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+
+volumes:
+  postgres_data_dev:
+  avatars_data_dev:
+
+networks:
+  default:
+    name: plural_chat_network_dev

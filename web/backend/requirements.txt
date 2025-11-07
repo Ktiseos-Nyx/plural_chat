@@ -1,0 +1,35 @@
+# FastAPI Web Backend Requirements
+
+# Core Framework
+fastapi==0.115.0
+uvicorn[standard]==0.32.0
+python-multipart==0.0.12
+
+# Database
+sqlalchemy==2.0.36
+psycopg2-binary==2.9.10
+alembic==1.14.0
+
+# WebSocket
+python-socketio==5.12.0
+python-engineio==4.11.0
+
+# Auth & Security
+python-jose[cryptography]==3.3.0
+passlib[bcrypt]==1.7.4
+python-dotenv==1.0.1
+cryptography==44.0.0
+
+# PluralKit API
+requests==2.32.3
+aiohttp==3.11.10
+
+# Image Processing
+Pillow==11.0.0
+
+# CORS
+fastapi-cors==0.0.6
+
+# Utilities
+pydantic==2.10.3
+pydantic-settings==2.6.1

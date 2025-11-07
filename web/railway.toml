@@ -1,0 +1,35 @@
+# Railway deployment configuration
+
+[build]
+builder = "NIXPACKS"
+buildCommand = "echo 'Building Plural Chat...'"
+
+[deploy]
+startCommand = "docker-compose up"
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 10
+
+[[services]]
+name = "backend"
+dockerfile = "backend/Dockerfile"
+
+[[services.env]]
+DATABASE_URL = "${{DATABASE_URL}}"
+SECRET_KEY = "${{SECRET_KEY}}"
+
+[[services]]
+name = "frontend"
+dockerfile = "frontend/Dockerfile"
+
+[[services.env]]
+NEXT_PUBLIC_API_URL = "${{RAILWAY_PUBLIC_DOMAIN}}"
+NEXT_PUBLIC_WS_URL = "${{RAILWAY_PUBLIC_DOMAIN}}"
+
+[[services]]
+name = "database"
+image = "postgres:16-alpine"
+
+[[services.env]]
+POSTGRES_USER = "plural_chat"
+POSTGRES_PASSWORD = "${{DB_PASSWORD}}"
+POSTGRES_DB = "plural_chat"
