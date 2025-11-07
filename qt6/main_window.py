@@ -270,7 +270,13 @@ class MainWindow(QMainWindow):
         # Use system default font family if not set
         default_font = QFont()  # Get system default
         font_family = self.app_db.get_setting("font_family", default_font.family())
-        font_size = int(self.app_db.get_setting("font_size", 10))
+
+        # Ensure font_size is an integer
+        font_size_setting = self.app_db.get_setting("font_size", "10")
+        try:
+            font_size = int(font_size_setting)
+        except (ValueError, TypeError):
+            font_size = 10
 
         font = QFont(font_family, font_size)
         self.setFont(font)
