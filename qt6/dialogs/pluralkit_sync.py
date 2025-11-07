@@ -53,7 +53,17 @@ class SyncWorker(QThread):
                 self.finished.emit(False, "Failed to fetch members")
                 return
 
-            self.progress.emit(f"Importing {len(members)} members...")
+            if len(members) == 0:
+                self.progress.emit("No members found in PluralKit system")
+                self.finished.emit(True, "No members to import")
+                return
+
+            self.progress.emit(f"Found {len(members)} members. Starting import...")
+            self.progress.emit("")
+
+            # Track counts
+            added_count = 0
+            updated_count = 0
 
             # Import each member
             for i, member in enumerate(members):
@@ -74,16 +84,33 @@ class SyncWorker(QThread):
                     'proxy_tags': proxy_tags_json
                 }
 
-                # Check if member already exists (by PK ID)
+                # Check if member already exists (by PK ID or name)
                 existing = self.system_db.get_member_by_pk_id(member_data['pk_id'])
-                if existing:
-                    member_data['member_id'] = existing['id']
-                    self.system_db.update_member(**member_data)
-                else:
-                    self.system_db.add_member(**member_data)
+                if not existing:
+                    # Also check by name
+                    existing = self.system_db.get_member_by_name(member_data['name'])
 
+                if existing:
+                    # Update existing member (remove 'name' to avoid unique constraint)
+                    update_data = {k: v for k, v in member_data.items() if k != 'name'}
+                    self.system_db.update_member(existing['id'], **update_data)
+                    self.progress.emit(f"  ✓ Updated: {member_name}")
+                    updated_count += 1
+                else:
+                    # Add new member
+                    self.system_db.add_member(**member_data)
+                    self.progress.emit(f"  ✓ Added: {member_name}")
+                    added_count += 1
+
+            self.progress.emit("")
+            self.progress.emit("=" * 50)
             self.progress.emit("Sync completed successfully!")
-            self.finished.emit(True, f"Successfully imported {len(members)} members")
+            self.progress.emit(f"Added: {added_count} members")
+            self.progress.emit(f"Updated: {updated_count} members")
+            self.progress.emit("=" * 50)
+
+            summary = f"Sync complete! Added {added_count}, Updated {updated_count}"
+            self.finished.emit(True, summary)
 
         except Exception as e:
             logger.error(f"Sync error: {e}")
