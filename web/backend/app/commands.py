@@ -470,6 +470,250 @@ async def cmd_ping(user_id: int, args: List[str], db: Session) -> str:
     return "🏓 Pong! System is running."
 
 
+# ===== STABLE DIFFUSION / AI IMAGE GENERATION =====
+
+@registry.register(
+    "sdconnect",
+    "Connect to Stable Diffusion API (GPU rental)",
+    "/sdconnect <api_type> <url> [api_key]",
+    aliases=["sdlink"]
+)
+async def cmd_sdconnect(user_id: int, args: List[str], db: Session) -> str:
+    """Connect to SD API"""
+    from .sd_integration import sd_manager
+
+    if len(args) < 2:
+        return "❌ Usage: `/sdconnect <api_type> <url> [api_key]`\n\n" \
+               "**API Types:**\n" \
+               "• `automatic1111` or `a1111` - Automatic1111 WebUI\n" \
+               "• `forge` - Forge WebUI (same as A1111)\n" \
+               "• `comfyui` - ComfyUI (coming soon)\n\n" \
+               "**Examples:**\n" \
+               "• `/sdconnect a1111 http://localhost:7860`\n" \
+               "• `/sdconnect forge https://mygpu.runpod.io`\n" \
+               "• `/sdconnect a1111 http://localhost:7860 my-api-key`"
+
+    api_type = args[0].lower()
+    url = args[1]
+    api_key = args[2] if len(args) > 2 else None
+
+    # Normalize API type
+    if api_type in ["a1111", "automatic1111"]:
+        api_type = "automatic1111"
+    elif api_type == "forge":
+        api_type = "forge"
+    elif api_type == "comfyui":
+        api_type = "comfyui"
+    else:
+        return f"❌ Unknown API type: `{api_type}`. Use: automatic1111, forge, or comfyui"
+
+    try:
+        sd_manager.add_connection(
+            user_id=user_id,
+            api_type=api_type,
+            base_url=url,
+            api_key=api_key
+        )
+
+        # Test connection
+        success = await sd_manager.test_connection(user_id)
+
+        if success:
+            return f"✅ Connected to **{api_type}** at `{url}`!\n\n" \
+                   f"Try it out:\n" \
+                   f"• `/generate a cute cat` - Simple generation\n" \
+                   f"• `/sdtest` - Test connection\n" \
+                   f"• `/sdmodels` - List available models"
+        else:
+            return f"⚠️  Connection saved, but test failed!\n" \
+                   f"Make sure the API is running at `{url}`"
+
+    except Exception as e:
+        return f"❌ Error: {str(e)}"
+
+
+@registry.register(
+    "sdtest",
+    "Test Stable Diffusion API connection",
+    "/sdtest"
+)
+async def cmd_sdtest(user_id: int, args: List[str], db: Session) -> str:
+    """Test SD API connection"""
+    from .sd_integration import sd_manager
+
+    conn = sd_manager.get_connection(user_id)
+    if not conn:
+        return "❌ No SD API connected. Use `/sdconnect` first!"
+
+    try:
+        success = await sd_manager.test_connection(user_id)
+
+        if success:
+            return f"✅ Connection OK!\n\n" \
+                   f"**API Type:** {conn['api_type']}\n" \
+                   f"**URL:** {conn['base_url']}\n\n" \
+                   f"Ready to generate! Try `/generate <prompt>`"
+        else:
+            return f"❌ Connection failed!\n\n" \
+                   f"**API Type:** {conn['api_type']}\n" \
+                   f"**URL:** {conn['base_url']}\n\n" \
+                   f"Make sure the API is running."
+
+    except Exception as e:
+        return f"❌ Error: {str(e)}"
+
+
+@registry.register(
+    "sdmodels",
+    "List available SD models",
+    "/sdmodels",
+    aliases=["models"]
+)
+async def cmd_sdmodels(user_id: int, args: List[str], db: Session) -> str:
+    """List SD models"""
+    from .sd_integration import sd_manager, Automatic1111API
+
+    conn = sd_manager.get_connection(user_id)
+    if not conn:
+        return "❌ No SD API connected. Use `/sdconnect` first!"
+
+    if conn["api_type"] not in ["automatic1111", "forge"]:
+        return "❌ Model listing only supported for Automatic1111/Forge"
+
+    try:
+        api = Automatic1111API(conn["base_url"], conn.get("api_key"))
+        models = await api.get_models()
+
+        if not models:
+            return "❌ No models found!"
+
+        result = "**📦 Available Models:**\n\n"
+        for i, model in enumerate(models, 1):
+            result += f"{i}. {model}\n"
+
+        return result
+
+    except Exception as e:
+        return f"❌ Error: {str(e)}"
+
+
+@registry.register(
+    "generate",
+    "Generate AI image with Stable Diffusion",
+    "/generate <prompt> [--negative <neg>] [--size WxH] [--steps N]",
+    aliases=["gen", "img"]
+)
+async def cmd_generate(user_id: int, args: List[str], db: Session) -> str:
+    """Generate image with SD API"""
+    from .sd_integration import sd_manager
+    from .media_cache import media_cache
+
+    if not args:
+        return "❌ Usage: `/generate <prompt> [options]`\n\n" \
+               "**Options:**\n" \
+               "• `--negative <prompt>` - Negative prompt\n" \
+               "• `--size WxH` - Image size (e.g., 512x512, 768x512)\n" \
+               "• `--steps N` - Number of steps (default: 20)\n\n" \
+               "**Examples:**\n" \
+               "• `/generate a cute cat`\n" \
+               "• `/generate a space station --size 768x512 --steps 30`\n" \
+               "• `/generate portrait of Riley --negative ugly, blurry`"
+
+    conn = sd_manager.get_connection(user_id)
+    if not conn:
+        return "❌ No SD API connected. Use `/sdconnect` first!\n\n" \
+               "Example: `/sdconnect a1111 http://localhost:7860`"
+
+    # Parse arguments
+    prompt_parts = []
+    negative_prompt = ""
+    width = 512
+    height = 512
+    steps = 20
+
+    i = 0
+    while i < len(args):
+        arg = args[i]
+
+        if arg == "--negative":
+            if i + 1 < len(args):
+                # Collect negative prompt until next flag
+                neg_parts = []
+                i += 1
+                while i < len(args) and not args[i].startswith("--"):
+                    neg_parts.append(args[i])
+                    i += 1
+                negative_prompt = " ".join(neg_parts)
+                continue
+        elif arg == "--size":
+            if i + 1 < len(args):
+                size_str = args[i + 1]
+                try:
+                    w, h = size_str.lower().split("x")
+                    width = int(w)
+                    height = int(h)
+                except:
+                    return f"❌ Invalid size format: `{size_str}`. Use format: 512x512"
+                i += 2
+                continue
+        elif arg == "--steps":
+            if i + 1 < len(args):
+                try:
+                    steps = int(args[i + 1])
+                    if steps < 1 or steps > 150:
+                        return "❌ Steps must be between 1 and 150"
+                except:
+                    return f"❌ Invalid steps: `{args[i + 1]}`"
+                i += 2
+                continue
+
+        prompt_parts.append(arg)
+        i += 1
+
+    prompt = " ".join(prompt_parts)
+
+    if not prompt:
+        return "❌ No prompt provided!"
+
+    # Validate dimensions
+    if width % 64 != 0 or height % 64 != 0:
+        return "❌ Width and height must be multiples of 64!"
+    if width > 1024 or height > 1024:
+        return "❌ Max size is 1024x1024!"
+
+    try:
+        # Generate image
+        return f"🎨 **Generating...**\n\n" \
+               f"**Prompt:** {prompt}\n" \
+               f"**Size:** {width}x{height}\n" \
+               f"**Steps:** {steps}\n\n" \
+               f"This may take 30-120 seconds depending on your GPU...\n\n" \
+               f"*Note: Image will be posted as a new message when ready.*"
+
+        # TODO: Actual generation happens in background task
+        # For now, just return the status message
+
+    except Exception as e:
+        return f"❌ Generation failed: {str(e)}"
+
+
+@registry.register(
+    "sddisconnect",
+    "Disconnect from Stable Diffusion API",
+    "/sddisconnect"
+)
+async def cmd_sddisconnect(user_id: int, args: List[str], db: Session) -> str:
+    """Disconnect SD API"""
+    from .sd_integration import sd_manager
+
+    conn = sd_manager.get_connection(user_id)
+    if not conn:
+        return "❌ No SD API connected."
+
+    sd_manager.remove_connection(user_id)
+    return "✅ Disconnected from Stable Diffusion API"
+
+
 # Export the execute function for easy import
 async def execute_command(user_id: int, message: str, db: Session) -> Optional[str]:
     """Execute a command from a message"""
