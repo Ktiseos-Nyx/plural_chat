@@ -98,7 +98,9 @@ class SettingsDialog(QDialog):
                 break
 
         # Load font
-        font_family = self.app_db.get_setting('font_family', 'Segoe UI')
+        # Use system default font family if not set
+        default_font = QFont()
+        font_family = self.app_db.get_setting('font_family', default_font.family())
         font_size = self.app_db.get_setting('font_size', 10)
 
         # Set font family
