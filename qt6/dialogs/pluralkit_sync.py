@@ -64,6 +64,7 @@ class SyncWorker(QThread):
             # Track counts
             added_count = 0
             updated_count = 0
+            avatar_count = 0
 
             # Import each member
             for i, member in enumerate(members):
@@ -74,13 +75,25 @@ class SyncWorker(QThread):
                 proxy_tags = member.get('proxy_tags', [])
                 proxy_tags_json = json.dumps(proxy_tags) if proxy_tags else None
 
+                # Download avatar if available
+                avatar_path = None
+                avatar_url = member.get('avatar_url')
+                if avatar_url:
+                    self.progress.emit(f"  Downloading avatar for {member_name}...")
+                    avatar_path = api.download_avatar(avatar_url, member_name)
+                    if avatar_path:
+                        self.progress.emit(f"  ✓ Avatar downloaded")
+                        avatar_count += 1
+                    else:
+                        self.progress.emit(f"  ⚠ Avatar download failed")
+
                 member_data = {
                     'name': member.get('name'),
                     'pronouns': member.get('pronouns'),
                     'color': '#' + member.get('color', '6c757d') if member.get('color') else '#6c757d',
                     'description': member.get('description'),
                     'pk_id': member.get('id'),
-                    'avatar_url': member.get('avatar_url'),
+                    'avatar_path': avatar_path,
                     'proxy_tags': proxy_tags_json
                 }
 
@@ -107,9 +120,10 @@ class SyncWorker(QThread):
             self.progress.emit("Sync completed successfully!")
             self.progress.emit(f"Added: {added_count} members")
             self.progress.emit(f"Updated: {updated_count} members")
+            self.progress.emit(f"Avatars downloaded: {avatar_count}")
             self.progress.emit("=" * 50)
 
-            summary = f"Sync complete! Added {added_count}, Updated {updated_count}"
+            summary = f"Sync complete! Added {added_count}, Updated {updated_count}, Avatars {avatar_count}"
             self.finished.emit(True, summary)
 
         except Exception as e:
