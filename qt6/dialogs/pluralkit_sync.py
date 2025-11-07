@@ -58,8 +58,19 @@ class SyncWorker(QThread):
                 self.finished.emit(True, "No members to import")
                 return
 
-            self.progress.emit(f"Found {len(members)} members. Starting import...")
+            self.progress.emit(f"Found {len(members)} members from PluralKit:")
             self.progress.emit("")
+
+            # Log and display member names for debugging
+            logger.info(f"PluralKit returned {len(members)} members:")
+            for member in members:
+                name = member.get('name', 'Unknown')
+                pk_id = member.get('id', 'no-id')
+                logger.info(f"  - {name} (ID: {pk_id})")
+                self.progress.emit(f"  • {name}")
+
+            self.progress.emit("")
+            self.progress.emit("Starting import...")
 
             # Track counts
             added_count = 0
