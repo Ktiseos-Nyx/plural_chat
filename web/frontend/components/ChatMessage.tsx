@@ -1,5 +1,6 @@
 /**
- * Individual chat message component
+ * Chat message bubble component
+ * Modern chat UI with member colors and avatars
  */
 'use client';
 
@@ -18,39 +19,56 @@ export default function ChatMessage({ message }: ChatMessageProps) {
   const timeString = format(new Date(timestamp), 'h:mm a');
 
   // Get member color or use default
-  const memberColor = member.color || '#6c757d';
+  const memberColor = member.color || '#6366f1';
 
   return (
-    <div className="flex gap-3 mb-4 p-3 rounded-lg hover:bg-gray-50">
-      {member.avatar_path ? (
-        <AntAvatar
-          src={`/api/avatars/${member.avatar_path}`}
-          alt={member.name}
-          size={40}
-        />
-      ) : (
-        <AntAvatar
-          style={{ backgroundColor: memberColor }}
-          size={40}
-        >
-          {member.name.charAt(0).toUpperCase()}
-        </AntAvatar>
-      )}
-      <div className="flex-1">
-        <div className="flex items-center gap-2 mb-1">
-          <span style={{ color: memberColor }} className="font-semibold">
+    <div className="group flex gap-3 px-4 py-2 hover:bg-gray-50/50 transition-colors">
+      {/* Avatar */}
+      <div className="flex-shrink-0 pt-0.5">
+        {member.avatar_path ? (
+          <AntAvatar
+            src={`/api/avatars/${member.avatar_path}`}
+            alt={member.name}
+            size={40}
+            className="ring-2 ring-gray-100"
+          />
+        ) : (
+          <AntAvatar
+            style={{
+              backgroundColor: memberColor,
+              fontSize: '16px',
+              fontWeight: 600,
+            }}
+            size={40}
+            className="ring-2 ring-gray-100"
+          >
+            {member.name.charAt(0).toUpperCase()}
+          </AntAvatar>
+        )}
+      </div>
+
+      {/* Message Content */}
+      <div className="flex-1 min-w-0">
+        {/* Header with name and timestamp */}
+        <div className="flex items-baseline gap-2 mb-1">
+          <span
+            style={{ color: memberColor }}
+            className="font-semibold text-[15px] hover:underline cursor-pointer"
+          >
             {member.name}
           </span>
           {member.pronouns && (
-            <span className="text-gray-500 text-sm">
+            <span className="text-xs text-gray-500 font-normal">
               ({member.pronouns})
             </span>
           )}
-          <span className="text-gray-400 text-sm ml-auto">
+          <span className="text-xs text-gray-400 font-normal">
             {timeString}
           </span>
         </div>
-        <div className="text-gray-800">
+
+        {/* Message text */}
+        <div className="text-[15px] text-gray-900 leading-relaxed break-words">
           {content}
         </div>
       </div>
