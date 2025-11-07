@@ -1,6 +1,7 @@
 """PluralKit sync dialog with progress feedback."""
 
 import logging
+import json
 from PyQt6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QFormLayout,
     QLineEdit, QPushButton, QLabel, QTextEdit,
@@ -31,12 +32,13 @@ class SyncWorker(QThread):
             api = PluralKitAPI(self.api_token)
 
             # Test connection
-            if not api.test_connection():
-                self.finished.emit(False, "Failed to connect to PluralKit API")
+            success, message = api.test_connection()
+            if not success:
+                self.finished.emit(False, f"Failed to connect to PluralKit API: {message}")
                 return
 
             self.progress.emit("Fetching system information...")
-            system_info = api.get_system()
+            system_info = api.get_system_info()
             if not system_info:
                 self.finished.emit(False, "Failed to fetch system information")
                 return
@@ -59,14 +61,17 @@ class SyncWorker(QThread):
                 self.progress.emit(f"Importing {i+1}/{len(members)}: {member_name}")
 
                 # Prepare member data
+                proxy_tags = member.get('proxy_tags', [])
+                proxy_tags_json = json.dumps(proxy_tags) if proxy_tags else None
+
                 member_data = {
                     'name': member.get('name'),
                     'pronouns': member.get('pronouns'),
-                    'color': '#' + member.get('color', '6c757d'),
+                    'color': '#' + member.get('color', '6c757d') if member.get('color') else '#6c757d',
                     'description': member.get('description'),
                     'pk_id': member.get('id'),
                     'avatar_url': member.get('avatar_url'),
-                    'proxy_tags': member.get('proxy_tags')
+                    'proxy_tags': proxy_tags_json
                 }
 
                 # Check if member already exists (by PK ID)
