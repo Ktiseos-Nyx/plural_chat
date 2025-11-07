@@ -1,8 +1,51 @@
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
+## 🎨 Lobe UI Integration
+
+This project uses [Lobe UI](https://github.com/lobehub/lobe-ui) for the chat interface. **Important setup requirements:**
+
+### Required Dependencies
+
+Make sure your `package.json` includes:
+
+```json
+{
+  "dependencies": {
+    "@lobehub/ui": "^2.13.6",
+    "@lobehub/icons": "^2.43.1",
+    "antd": "^5.22.6",           // REQUIRED: Lobe UI peer dependency
+    "antd-style": "^3.7.1",
+    // ... other deps
+  }
+}
+```
+
+**Note:** Ant Design (`antd`) is a **required peer dependency** for Lobe UI. The app will not work without it.
+
+### Next.js Configuration
+
+Your `next.config.ts` **must** include transpilePackages for Lobe UI (ESM-only package):
+
+```typescript
+const nextConfig: NextConfig = {
+  transpilePackages: ['@lobehub/ui', '@lobehub/icons', 'antd-style'],
+  // ... other config
+};
+```
+
+Without this, you'll get ESM import errors in production builds.
+
 ## Getting Started
 
-First, run the development server:
+First, install dependencies:
+
+```bash
+npm install
+# or
+bun install
+```
+
+Then run the development server:
 
 ```bash
 npm run dev
