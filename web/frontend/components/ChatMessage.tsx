@@ -1,10 +1,9 @@
 /**
- * Individual chat message component using LobeHub UI
+ * Individual chat message component
  */
 'use client';
 
-import { ChatItem } from '@lobehub/ui';
-import { Avatar } from '@lobehub/ui';
+import { Avatar as AntAvatar } from 'antd';
 import type { Message } from '@/lib/store';
 import { format } from 'date-fns';
 
@@ -22,43 +21,39 @@ export default function ChatMessage({ message }: ChatMessageProps) {
   const memberColor = member.color || '#6c757d';
 
   return (
-    <ChatItem
-      avatar={
-        member.avatar_path ? (
-          <Avatar
-            src={`/api/avatars/${member.avatar_path}`}
-            alt={member.name}
-            size={40}
-          />
-        ) : (
-          <Avatar
-            alt={member.name}
-            background={memberColor}
-            size={40}
-          >
-            {member.name.charAt(0).toUpperCase()}
-          </Avatar>
-        )
-      }
-      primary={
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <span style={{ color: memberColor, fontWeight: 600 }}>
+    <div className="flex gap-3 mb-4 p-3 rounded-lg hover:bg-gray-50">
+      {member.avatar_path ? (
+        <AntAvatar
+          src={`/api/avatars/${member.avatar_path}`}
+          alt={member.name}
+          size={40}
+        />
+      ) : (
+        <AntAvatar
+          style={{ backgroundColor: memberColor }}
+          size={40}
+        >
+          {member.name.charAt(0).toUpperCase()}
+        </AntAvatar>
+      )}
+      <div className="flex-1">
+        <div className="flex items-center gap-2 mb-1">
+          <span style={{ color: memberColor }} className="font-semibold">
             {member.name}
           </span>
           {member.pronouns && (
-            <span style={{ color: '#6c757d', fontSize: '0.85em' }}>
+            <span className="text-gray-500 text-sm">
               ({member.pronouns})
             </span>
           )}
-          <span style={{ color: '#999', fontSize: '0.85em', marginLeft: 'auto' }}>
+          <span className="text-gray-400 text-sm ml-auto">
             {timeString}
           </span>
         </div>
-      }
-      text={content}
-      placement="left"
-      showTitle
-      style={{ marginBottom: '16px' }}
-    />
+        <div className="text-gray-800">
+          {content}
+        </div>
+      </div>
+    </div>
   );
 }
