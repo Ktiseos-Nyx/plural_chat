@@ -107,6 +107,36 @@ async def send_message(sid, data):
         if not content or not member_id:
             return {'success': False, 'error': 'Missing content or member_id'}
 
+        # Check if it's a command (starts with /)
+        if content.startswith('/'):
+            from .commands import registry
+            from .database import SessionLocal
+
+            db = SessionLocal()
+            try:
+                result = await registry.execute(int(user_id), content, db)
+
+                # Send command result back to user
+                if result:
+                    command_response = {
+                        'id': 0,
+                        'member_id': member_id,
+                        'content': result,
+                        'timestamp': None,
+                        'is_system': True,  # Mark as system message
+                        'member': {'name': 'System', 'color': '#888888'}
+                    }
+
+                    # Send to all user's sessions
+                    sessions = connection_manager.get_user_sessions(user_id)
+                    for session_id in sessions:
+                        await sio_app.emit('message', command_response, room=session_id)
+
+                return {'success': True, 'is_command': True}
+            finally:
+                db.close()
+
+        # Regular message handling
         # TODO: Save message to database and get full message object
         # For now, just broadcast it
         message_data = {

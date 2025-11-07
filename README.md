@@ -1,8 +1,16 @@
 # 🌐 Plural Chat - Web Edition
 
-A modern web-based chat application designed specifically for plural systems, featuring PluralKit integration, AI image generation, and real-time communication.
+A modern web-based chat application with multi-persona support, AI image generation, and real-time communication. **Perfect for plural systems, roleplayers, writers, or anyone who wants a personal chat space!**
 
 > **Note:** This branch contains the web edition. The desktop versions have been moved to separate branches.
+
+## 👥 Who Is This For?
+
+- **Plural Systems** - Manage system members with optional PluralKit sync
+- **Roleplayers** - Create and chat as different characters
+- **Writers** - Develop characters through conversation
+- **Solo Users** - Just want a private, customizable chat app
+- **Anyone** - No plural system required! Works great for everyone!
 
 ## 🚀 Quick Start
 
@@ -20,9 +28,10 @@ The Plural Chat web edition is located in the `web/` directory. Please see the c
 
 ### Chat & Communication
 - **Real-time messaging**: WebSocket-based instant messaging
+- **Multi-persona support**: Chat as different characters/personas/members
 - **Discord-style commands**: `/member`, `/switch`, `/generate`, `/help`, and more
-- **Member proxying**: Automatic member detection via proxy tags
-- **PluralKit sync**: Import your existing PK system data
+- **Optional proxy tags**: Automatic persona detection (optional feature)
+- **Optional PluralKit sync**: Import existing PK data if you use it (not required!)
 
 ### AI Image Generation
 - **Stable Diffusion integration**: Connect to Automatic1111, Forge UI, or ComfyUI
