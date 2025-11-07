@@ -19,6 +19,21 @@ services:
       timeout: 5s
       retries: 5
 
+  # Redis Cache
+  redis:
+    image: redis:7-alpine
+    container_name: plural_chat_redis
+    command: redis-server --maxmemory 256mb --maxmemory-policy allkeys-lru
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   # FastAPI Backend
   backend:
     build:
@@ -27,15 +42,20 @@ services:
     container_name: plural_chat_backend
     environment:
       DATABASE_URL: postgresql://plural_chat:${DB_PASSWORD:-change_me_in_production}@db:5432/plural_chat
+      REDIS_URL: redis://redis:6379
       SECRET_KEY: ${SECRET_KEY:-your-secret-key-change-in-production}
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY:-your-encryption-key-change-in-production}
       CORS_ORIGINS: http://localhost:3000,http://localhost:8000
     volumes:
       - ./backend:/app
       - avatars_data:/app/avatars
+      - media_cache:/app/media_cache
     ports:
       - "8000:8000"
     depends_on:
       db:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 
@@ -55,7 +75,9 @@ services:
 
 volumes:
   postgres_data:
+  redis_data:
   avatars_data:
+  media_cache:
 
 networks:
   default:
