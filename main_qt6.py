@@ -5,6 +5,8 @@ A desktop chat application for plural systems with PluralKit integration.
 """
 
 import sys
+sys.dont_write_bytecode = True  # Prevent .pyc caching issues
+
 import logging
 from pathlib import Path
 from PyQt6.QtWidgets import QApplication
