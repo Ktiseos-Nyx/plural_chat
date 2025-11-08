@@ -9,7 +9,7 @@ import logging
 
 from ..database import get_db
 from .. import models, schemas
-from ..auth import create_access_token, get_current_user
+from ..auth_enhanced import create_access_token, get_current_user
 from ..pluralkit import PluralKitAPI
 
 router = APIRouter()
