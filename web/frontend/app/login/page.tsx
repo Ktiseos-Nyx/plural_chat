@@ -7,7 +7,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Input, Button, Card, Alert } from 'antd';
 import { LockOutlined, UserOutlined, SafetyOutlined } from '@ant-design/icons';
-import { securityAPI } from '@/lib/api';
+import { securityAPI, authAPI } from '@/lib/api';
 import { useStore } from '@/lib/store';
 import Link from 'next/link';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
@@ -51,7 +51,7 @@ export default function LoginPage() {
       } else if (response.access_token) {
         // Success - verify token and fetch user data
         try {
-          const userData = await securityAPI.verifyToken();
+          const userData = await authAPI.verifyToken();
           setUser(userData);
           router.push('/');
         } catch (verifyError) {
@@ -86,7 +86,7 @@ export default function LoginPage() {
       if (response.access_token) {
         // Success - verify token and fetch user data
         try {
-          const userData = await securityAPI.verifyToken();
+          const userData = await authAPI.verifyToken();
           setUser(userData);
           router.push('/');
         } catch (verifyError) {

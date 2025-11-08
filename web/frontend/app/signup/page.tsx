@@ -7,7 +7,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Input, Button, Card, Alert } from 'antd';
 import { LockOutlined, UserOutlined, MailOutlined } from '@ant-design/icons';
-import { securityAPI } from '@/lib/api';
+import { securityAPI, authAPI } from '@/lib/api';
 import { useStore } from '@/lib/store';
 import Link from 'next/link';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
@@ -72,7 +72,7 @@ export default function SignupPage() {
 
         if (loginResponse.access_token) {
           // Fetch user data and set in store
-          const userData = await securityAPI.verifyToken();
+          const userData = await authAPI.verifyToken();
           setUser(userData);
 
           // Redirect to home page
