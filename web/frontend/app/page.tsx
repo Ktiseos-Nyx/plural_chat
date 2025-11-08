@@ -56,6 +56,11 @@ export default function HomePage() {
         setMembers(membersData);
         setChannels(channelsData);
 
+        // Auto-select first member if not already selected (so users can chat immediately)
+        if (!selectedMember && membersData.length > 0) {
+          setSelectedMember(membersData[0]);
+        }
+
         // Select default channel if not already selected
         if (!selectedChannel && channelsData.length > 0) {
           const defaultChannel = channelsData.find(ch => ch.is_default) || channelsData[0];
@@ -69,7 +74,7 @@ export default function HomePage() {
     };
 
     loadData();
-  }, [user, router, setMembers, setChannels, selectedChannel, setSelectedChannel]);
+  }, [user, router, setMembers, setChannels, selectedChannel, setSelectedChannel, selectedMember, setSelectedMember]);
 
   // Load messages when channel changes
   useEffect(() => {
