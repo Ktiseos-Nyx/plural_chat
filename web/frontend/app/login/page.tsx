@@ -49,8 +49,14 @@ export default function LoginPage() {
         setUserId(response.user_id || null);
         setError('');
       } else if (response.access_token) {
-        // Success
-        router.push('/');
+        // Success - verify token and fetch user data
+        try {
+          const userData = await securityAPI.verifyToken();
+          setUser(userData);
+          router.push('/');
+        } catch (verifyError) {
+          setError('Login successful but failed to fetch user data');
+        }
       }
     } catch (err: any) {
       setError(err.response?.data?.detail || 'Login failed. Please check your credentials.');
@@ -78,8 +84,14 @@ export default function LoginPage() {
       });
 
       if (response.access_token) {
-        // Success
-        router.push('/');
+        // Success - verify token and fetch user data
+        try {
+          const userData = await securityAPI.verifyToken();
+          setUser(userData);
+          router.push('/');
+        } catch (verifyError) {
+          setError('Verification successful but failed to fetch user data');
+        }
       } else {
         setError('Verification failed');
       }
