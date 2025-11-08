@@ -36,9 +36,28 @@ api.interceptors.response.use(
       detail: error.response?.data?.detail
     });
 
+    // Map common errors to user-friendly messages
+    const status = error.response?.status;
+    const userFriendlyMessages: Record<number, string> = {
+      400: 'Invalid request. Please check your input.',
+      401: 'Session expired. Please log in again.',
+      403: 'You don\'t have permission to do that.',
+      404: 'Resource not found.',
+      409: 'That name is already taken.',
+      500: 'Server error. Please try again later.',
+      502: 'Server is temporarily unavailable.',
+      503: 'Service unavailable. Please try again later.',
+    };
+
     // Handle network errors
     if (!error.response) {
-      error.message = 'Cannot connect to server. Please check if the backend is running.';
+      error.userMessage = 'Cannot connect to server. Please check if the backend is running.';
+      error.message = error.userMessage;
+    } else if (status && userFriendlyMessages[status]) {
+      error.userMessage = userFriendlyMessages[status];
+      // Keep the original error message for debugging, add userMessage for display
+    } else {
+      error.userMessage = error.response?.data?.detail || error.message;
     }
 
     return Promise.reject(error);
@@ -93,9 +112,18 @@ export const authAPI = {
     return response.data;
   },
 
-  logout: () => {
-    localStorage.removeItem('pk_token');
-    localStorage.removeItem('access_token');
+  logout: async () => {
+    try {
+      // Call backend to log the logout event
+      await api.post('/auth/logout');
+    } catch (error) {
+      // Continue with logout even if backend call fails
+      console.error('Logout API call failed:', error);
+    } finally {
+      // Always clear local tokens
+      localStorage.removeItem('pk_token');
+      localStorage.removeItem('access_token');
+    }
   },
 
   verifyToken: async () => {
@@ -253,6 +281,33 @@ export const messagesAPI = {
   delete: async (id: number) => {
     await api.delete(`/messages/${id}`);
   },
+
+  // Export chat logs in various formats
+  export: async (format: 'json' | 'csv' | 'txt', startDate?: string, endDate?: string) => {
+    const params = new URLSearchParams();
+    if (startDate) params.append('start_date', startDate);
+    if (endDate) params.append('end_date', endDate);
+
+    const queryString = params.toString();
+    const url = `/messages/export/${format}${queryString ? `?${queryString}` : ''}`;
+
+    const response = await api.get(url, {
+      responseType: 'blob',
+    });
+
+    // Trigger download
+    const blob = new Blob([response.data]);
+    const downloadUrl = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = downloadUrl;
+    link.download = `plural_chat_export_${Date.now()}.${format}`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(downloadUrl);
+
+    return { success: true, format };
+  },
 };
 
 // Channels API
@@ -313,9 +368,8 @@ export const channelsAPI = {
   },
 
   reorder: async (channelIds: number[]) => {
-    const response = await api.post<Channel[]>('/channels/reorder', {
-      channel_ids: channelIds,
-    });
+    // Backend expects the array to be sent directly as JSON
+    const response = await api.post<Channel[]>('/channels/reorder', channelIds);
     return response.data;
   },
 };
