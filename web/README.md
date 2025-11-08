@@ -35,17 +35,37 @@ A modern, self-hosted web chat application with multi-persona support, AI charac
 - **Fully optional** - Create characters manually if you prefer
 
 ### 🎨 Additional Features
-- **Beautiful UI** - Built with LobeHub UI components
+- **Beautiful UI** - Built with shadcn/ui + Ant Design components
+- **Dark Mode** - Gorgeous dark theme (default) with instant toggle
+- **Channels/Rooms** - Discord-style conversation organization
 - **Multi-User** - Multiple people can use the same instance (5-10 users recommended)
 - **Self-Hosted** - Full control over your data
 - **Easy Deployment** - One-click deploy to Railway or Docker
 - **AI Image Generation** - Connect to Stable Diffusion (Automatic1111/Forge/ComfyUI)
-- **Authentication** - Username/password, OAuth (Discord, Google, GitHub), email verification
+- **Authentication** - Username/password, OAuth (Discord, Google, GitHub), 2FA, email verification
 - **Redis Caching** - 10-100x performance boost with smart caching
 
-## 🚀 Quick Deploy
+## 🚀 Quick Start
 
-### Deploy to Railway (Recommended)
+### Easiest: One Command Start ⭐
+
+**Get everything running instantly:**
+
+```bash
+# Linux/Mac
+./dev.sh
+
+# Windows
+dev.bat
+```
+
+Opens http://localhost:3000 automatically. Auto-installs all dependencies on first run!
+
+**See [QUICKSTART.md](../QUICKSTART.md) for details.**
+
+---
+
+### Deploy to Railway (Production)
 
 [![Deploy on Railway](https://railway.app/button.svg)](https://railway.app/template/plural-chat)
 
@@ -179,13 +199,13 @@ Multiple people can use the same instance! Perfect for:
 ### Tech Stack
 
 **Frontend:**
-- Next.js 16 (React 19)
+- Next.js 14.2 (React 18.3)
 - TypeScript
-- LobeHub UI
+- shadcn/ui (Built on Radix UI)
+- Ant Design
 - Zustand (State Management)
 - Socket.IO Client
-- Tailwind CSS
-- Ant Design
+- Tailwind CSS v3
 
 **Backend:**
 - FastAPI

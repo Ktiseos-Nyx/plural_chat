@@ -14,9 +14,20 @@ A modern web-based chat application with multi-persona support, AI image generat
 
 ## 🚀 Quick Start
 
-The Plural Chat web edition is located in the `web/` directory. Please see the comprehensive documentation there:
+**Get running in 1 command:**
 
-**📖 [Web Edition Documentation](web/README.md)**
+```bash
+# Linux/Mac
+./dev.sh
+
+# Windows
+dev.bat
+```
+
+That's it! Opens http://localhost:3000 automatically.
+
+**📖 [QUICKSTART.md](QUICKSTART.md)** - Beginner-friendly guide
+**📖 [Web Edition Documentation](web/README.md)** - Full docs
 
 ## ✨ Key Features
 
@@ -37,9 +48,11 @@ The Plural Chat web edition is located in the `web/` directory. Please see the c
 
 ### Chat & Communication
 - **Real-time messaging**: WebSocket-based instant messaging
+- **Channels/Rooms**: Organize conversations Discord-style with custom colors & emojis
 - **Character-based chat**: Message as any of your created characters
 - **Discord-style commands**: `/switch`, `/member`, `/generate`, `/help`, and more
 - **Proxy tag auto-switching**: Type `luna: hello!` → auto-switches to Luna
+- **Dark mode**: Beautiful dark theme (default) with toggle
 - **Export chat logs**: Download conversations in JSON, CSV, or TXT
 
 ### 🤖 AI Characters (NEW!)
@@ -151,10 +164,12 @@ One of the standout features! Connect your temporary GPU rental to Plural Chat:
 - **JWT** - Token-based authentication
 
 ### Frontend
-- **Next.js 14** - React framework
-- **Lobe UI** - Modern chat interface components
+- **Next.js 14** - React framework with App Router
+- **shadcn/ui** - Modern component system built on Radix UI
+- **Ant Design** - Enterprise-grade UI components
 - **TypeScript** - Type-safe JavaScript
 - **Tailwind CSS** - Utility-first styling
+- **Zustand** - Lightweight state management
 
 ### DevOps
 - **Docker** - Containerization
