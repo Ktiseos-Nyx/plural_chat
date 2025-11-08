@@ -21,14 +21,21 @@ router = APIRouter()
 @router.get("/", response_model=List[schemas.Message])
 async def get_messages(
     limit: int = Query(50, ge=1, le=500),
+    channel_id: Optional[int] = Query(None, description="Filter by channel ID"),
     current_user: models.User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """Get recent messages from the chat"""
+    """Get recent messages from the chat, optionally filtered by channel"""
     # Get messages from all members of this user's system
-    messages = db.query(models.Message).join(models.Member).filter(
+    query = db.query(models.Message).join(models.Member).filter(
         models.Member.user_id == current_user.id
-    ).order_by(desc(models.Message.timestamp)).limit(limit).all()
+    )
+
+    # Filter by channel if specified
+    if channel_id is not None:
+        query = query.filter(models.Message.channel_id == channel_id)
+
+    messages = query.order_by(desc(models.Message.timestamp)).limit(limit).all()
 
     # Reverse to get chronological order
     return list(reversed(messages))
@@ -53,9 +60,23 @@ async def send_message(
             detail="Member not found"
         )
 
+    # Verify channel if specified
+    if message.channel_id is not None:
+        channel = db.query(models.Channel).filter(
+            models.Channel.id == message.channel_id,
+            models.Channel.user_id == current_user.id
+        ).first()
+
+        if not channel:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Channel not found"
+            )
+
     # Create message
     new_message = models.Message(
         member_id=message.member_id,
+        channel_id=message.channel_id,
         content=message.content
     )
     db.add(new_message)

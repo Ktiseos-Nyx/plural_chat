@@ -1,22 +1,29 @@
 "use client"
 
 import * as React from "react"
-import { Menu, Settings, LogOut } from "lucide-react"
+import { Menu, Settings, LogOut, Hash } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { ChatList } from "@/components/ui/chat-list"
 import { ChatInput } from "@/components/ui/chat-input"
 import { MemberSidebar } from "@/components/ui/member-sidebar"
+import { ChannelSidebar } from "@/components/ui/channel-sidebar"
 import { Separator } from "@/components/ui/separator"
 import { cn } from "@/lib/utils"
 import type { Member, Message } from "@/lib/store"
+import type { Channel } from "@/lib/api"
 
 interface ChatInterfaceProps {
   members: Member[]
+  channels: Channel[]
   messages: Message[]
   selectedMember?: Member | null
+  selectedChannel?: Channel | null
   onSelectMember: (member: Member) => void
+  onSelectChannel: (channel: Channel) => void
   onSendMessage: (message: string) => void
   onAddMember?: () => void
+  onAddChannel?: () => void
+  onEditChannel?: (channel: Channel) => void
   onSettings?: () => void
   onLogout?: () => void
   sidebarOpen?: boolean
@@ -26,22 +33,44 @@ interface ChatInterfaceProps {
 
 export function ChatInterface({
   members,
+  channels,
   messages,
   selectedMember,
+  selectedChannel,
   onSelectMember,
+  onSelectChannel,
   onSendMessage,
   onAddMember,
+  onAddChannel,
+  onEditChannel,
   onSettings,
   onLogout,
   sidebarOpen = true,
   onToggleSidebar,
   className,
 }: ChatInterfaceProps) {
+  const [showArchivedChannels, setShowArchivedChannels] = React.useState(false)
+
   return (
     <div className={cn("flex h-screen bg-background", className)}>
-      {/* Sidebar */}
+      {/* Channel Sidebar */}
       {sidebarOpen && (
-        <div className="w-80 flex-shrink-0">
+        <div className="w-60 flex-shrink-0">
+          <ChannelSidebar
+            channels={channels}
+            selectedChannel={selectedChannel}
+            onSelectChannel={onSelectChannel}
+            onCreateChannel={onAddChannel}
+            onEditChannel={onEditChannel}
+            showArchived={showArchivedChannels}
+            onToggleArchived={() => setShowArchivedChannels(!showArchivedChannels)}
+          />
+        </div>
+      )}
+
+      {/* Member Sidebar */}
+      {sidebarOpen && (
+        <div className="w-64 flex-shrink-0">
           <MemberSidebar
             members={members}
             selectedMember={selectedMember}
@@ -68,28 +97,29 @@ export function ChatInterface({
               </Button>
             )}
 
-            {selectedMember ? (
-              <div className="flex items-center gap-2">
-                <div
-                  className="h-2 w-2 rounded-full"
-                  style={{
-                    backgroundColor: selectedMember.color || "hsl(var(--primary))",
-                  }}
-                />
-                <h1 className="font-semibold text-lg">
-                  {selectedMember.name}
-                  {selectedMember.pronouns && (
-                    <span className="text-sm font-normal text-muted-foreground ml-2">
-                      ({selectedMember.pronouns})
+            <div className="flex items-center gap-3">
+              {selectedChannel && (
+                <div className="flex items-center gap-2">
+                  <span className="text-lg">{selectedChannel.emoji || "💬"}</span>
+                  <h1
+                    className="font-semibold text-lg"
+                    style={{ color: selectedChannel.color || undefined }}
+                  >
+                    {selectedChannel.name}
+                  </h1>
+                  {selectedChannel.description && (
+                    <span className="text-sm text-muted-foreground">
+                      • {selectedChannel.description}
                     </span>
                   )}
+                </div>
+              )}
+              {!selectedChannel && (
+                <h1 className="font-semibold text-lg text-muted-foreground">
+                  Select a channel
                 </h1>
-              </div>
-            ) : (
-              <h1 className="font-semibold text-lg text-muted-foreground">
-                Plural Chat
-              </h1>
-            )}
+              )}
+            </div>
           </div>
 
           <div className="flex items-center gap-2">

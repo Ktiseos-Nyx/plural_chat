@@ -52,16 +52,50 @@ class Member(MemberBase):
         from_attributes = True
 
 
+# Channel Schemas
+class ChannelBase(BaseModel):
+    name: str = Field(..., min_length=1, max_length=100)
+    description: Optional[str] = None
+    color: Optional[str] = Field(None, pattern=r'^#[0-9A-Fa-f]{6}$')  # Hex color
+    emoji: Optional[str] = Field(None, max_length=10)
+
+class ChannelCreate(ChannelBase):
+    pass
+
+class ChannelUpdate(BaseModel):
+    name: Optional[str] = Field(None, min_length=1, max_length=100)
+    description: Optional[str] = None
+    color: Optional[str] = Field(None, pattern=r'^#[0-9A-Fa-f]{6}$')
+    emoji: Optional[str] = Field(None, max_length=10)
+    is_archived: Optional[bool] = None
+    position: Optional[int] = None
+
+class Channel(ChannelBase):
+    id: int
+    user_id: int
+    is_default: bool
+    is_archived: bool
+    position: int
+    created_at: datetime
+    updated_at: datetime
+    message_count: Optional[int] = 0  # Computed field
+
+    class Config:
+        from_attributes = True
+
+
 # Message Schemas
 class MessageBase(BaseModel):
     content: str
 
 class MessageCreate(MessageBase):
     member_id: int
+    channel_id: Optional[int] = None
 
 class Message(MessageBase):
     id: int
     member_id: int
+    channel_id: Optional[int] = None
     member: Member
     timestamp: datetime
 

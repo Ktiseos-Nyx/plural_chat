@@ -1,30 +1,40 @@
 /**
- * Main chat page - Now with shadcn/ui components!
+ * Main chat page - Now with shadcn/ui components and channels!
  */
 'use client';
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useStore } from '@/lib/store';
-import { membersAPI, messagesAPI } from '@/lib/api';
+import { membersAPI, messagesAPI, channelsAPI, type Channel } from '@/lib/api';
 import { useWebSocket } from '@/lib/useWebSocket';
 import { ChatInterface } from '@/components/ui/chat-interface';
+import { ChannelModal } from '@/components/ui/channel-modal';
 
 export default function HomePage() {
   const router = useRouter();
   const {
     user,
     members,
+    channels,
     messages,
     selectedMember,
+    selectedChannel,
     sidebarOpen,
     setMembers,
+    setChannels,
     setMessages,
     setSelectedMember,
+    setSelectedChannel,
     toggleSidebar,
     addMessage,
+    addChannel,
+    updateChannel,
+    deleteChannel,
   } = useStore();
   const [loading, setLoading] = useState(true);
+  const [channelModalOpen, setChannelModalOpen] = useState(false);
+  const [editingChannel, setEditingChannel] = useState<Channel | null>(null);
 
   // Initialize WebSocket
   useWebSocket();
@@ -39,12 +49,18 @@ export default function HomePage() {
     // Load initial data
     const loadData = async () => {
       try {
-        const [membersData, messagesData] = await Promise.all([
+        const [membersData, channelsData] = await Promise.all([
           membersAPI.getAll(),
-          messagesAPI.getRecent(50),
+          channelsAPI.getAll(),
         ]);
         setMembers(membersData);
-        setMessages(messagesData);
+        setChannels(channelsData);
+
+        // Select default channel if not already selected
+        if (!selectedChannel && channelsData.length > 0) {
+          const defaultChannel = channelsData.find(ch => ch.is_default) || channelsData[0];
+          setSelectedChannel(defaultChannel);
+        }
       } catch (error) {
         console.error('Failed to load data:', error);
       } finally {
@@ -53,14 +69,34 @@ export default function HomePage() {
     };
 
     loadData();
-  }, [user, router, setMembers, setMessages]);
+  }, [user, router, setMembers, setChannels, selectedChannel, setSelectedChannel]);
+
+  // Load messages when channel changes
+  useEffect(() => {
+    const loadMessages = async () => {
+      if (!selectedChannel) {
+        setMessages([]);
+        return;
+      }
+
+      try {
+        const messagesData = await messagesAPI.getRecent(50, selectedChannel.id);
+        setMessages(messagesData);
+      } catch (error) {
+        console.error('Failed to load messages:', error);
+      }
+    };
+
+    loadMessages();
+  }, [selectedChannel, setMessages]);
 
   const handleSendMessage = async (content: string) => {
-    if (!selectedMember) return;
+    if (!selectedMember || !selectedChannel) return;
 
     try {
       const message = await messagesAPI.create({
         member_id: selectedMember.id,
+        channel_id: selectedChannel.id,
         content,
       });
       addMessage(message);
@@ -71,6 +107,55 @@ export default function HomePage() {
 
   const handleAddMember = () => {
     router.push('/settings');
+  };
+
+  const handleAddChannel = () => {
+    setEditingChannel(null);
+    setChannelModalOpen(true);
+  };
+
+  const handleEditChannel = (channel: Channel) => {
+    setEditingChannel(channel);
+    setChannelModalOpen(true);
+  };
+
+  const handleSaveChannel = async (data: {
+    name: string;
+    description?: string;
+    color?: string;
+    emoji?: string;
+  }) => {
+    try {
+      if (editingChannel) {
+        // Update existing channel
+        const updated = await channelsAPI.update(editingChannel.id, data);
+        updateChannel(editingChannel.id, updated);
+      } else {
+        // Create new channel
+        const newChannel = await channelsAPI.create(data);
+        addChannel(newChannel);
+        setSelectedChannel(newChannel);
+      }
+      setChannelModalOpen(false);
+      setEditingChannel(null);
+    } catch (error) {
+      console.error('Failed to save channel:', error);
+      throw error;
+    }
+  };
+
+  const handleDeleteChannel = async () => {
+    if (!editingChannel) return;
+
+    try {
+      await channelsAPI.delete(editingChannel.id, false);
+      deleteChannel(editingChannel.id);
+      setChannelModalOpen(false);
+      setEditingChannel(null);
+    } catch (error) {
+      console.error('Failed to delete channel:', error);
+      throw error;
+    }
   };
 
   const handleSettings = () => {
@@ -95,17 +180,35 @@ export default function HomePage() {
   }
 
   return (
-    <ChatInterface
-      members={members}
-      messages={messages}
-      selectedMember={selectedMember}
-      onSelectMember={setSelectedMember}
-      onSendMessage={handleSendMessage}
-      onAddMember={handleAddMember}
-      onSettings={handleSettings}
-      onLogout={handleLogout}
-      sidebarOpen={sidebarOpen}
-      onToggleSidebar={toggleSidebar}
-    />
+    <>
+      <ChatInterface
+        members={members}
+        channels={channels}
+        messages={messages}
+        selectedMember={selectedMember}
+        selectedChannel={selectedChannel}
+        onSelectMember={setSelectedMember}
+        onSelectChannel={setSelectedChannel}
+        onSendMessage={handleSendMessage}
+        onAddMember={handleAddMember}
+        onAddChannel={handleAddChannel}
+        onEditChannel={handleEditChannel}
+        onSettings={handleSettings}
+        onLogout={handleLogout}
+        sidebarOpen={sidebarOpen}
+        onToggleSidebar={toggleSidebar}
+      />
+
+      <ChannelModal
+        channel={editingChannel}
+        open={channelModalOpen}
+        onClose={() => {
+          setChannelModalOpen(false);
+          setEditingChannel(null);
+        }}
+        onSave={handleSaveChannel}
+        onDelete={editingChannel ? handleDeleteChannel : undefined}
+      />
+    </>
   );
 }

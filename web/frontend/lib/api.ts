@@ -170,21 +170,96 @@ export const membersAPI = {
 
 // Messages API
 export const messagesAPI = {
-  getRecent: async (limit = 50) => {
-    const response = await api.get<Message[]>(`/messages?limit=${limit}`);
+  getRecent: async (limit = 50, channelId?: number) => {
+    const params = new URLSearchParams({ limit: limit.toString() });
+    if (channelId !== undefined) {
+      params.append('channel_id', channelId.toString());
+    }
+    const response = await api.get<Message[]>(`/messages?${params}`);
     return response.data;
   },
 
-  send: async (memberId: number, content: string) => {
+  create: async (data: { member_id: number; content: string; channel_id?: number }) => {
+    const response = await api.post<Message>('/messages', data);
+    return response.data;
+  },
+
+  send: async (memberId: number, content: string, channelId?: number) => {
     const response = await api.post<Message>('/messages', {
       member_id: memberId,
       content,
+      channel_id: channelId,
     });
     return response.data;
   },
 
   delete: async (id: number) => {
     await api.delete(`/messages/${id}`);
+  },
+};
+
+// Channels API
+export interface Channel {
+  id: number;
+  user_id: number;
+  name: string;
+  description?: string;
+  color?: string;
+  emoji?: string;
+  is_default: boolean;
+  is_archived: boolean;
+  position: number;
+  created_at: string;
+  updated_at: string;
+  message_count?: number;
+}
+
+export const channelsAPI = {
+  getAll: async (includeArchived = false) => {
+    const params = includeArchived ? '?include_archived=true' : '';
+    const response = await api.get<Channel[]>(`/channels${params}`);
+    return response.data;
+  },
+
+  getById: async (id: number) => {
+    const response = await api.get<Channel>(`/channels/${id}`);
+    return response.data;
+  },
+
+  create: async (data: {
+    name: string;
+    description?: string;
+    color?: string;
+    emoji?: string;
+  }) => {
+    const response = await api.post<Channel>('/channels', data);
+    return response.data;
+  },
+
+  update: async (id: number, data: Partial<Channel>) => {
+    const response = await api.patch<Channel>(`/channels/${id}`, data);
+    return response.data;
+  },
+
+  delete: async (id: number, deleteMessages = false) => {
+    await api.delete(`/channels/${id}?delete_messages=${deleteMessages}`);
+  },
+
+  archive: async (id: number) => {
+    const response = await api.post<Channel>(`/channels/${id}/archive`);
+    return response.data;
+  },
+
+  unarchive: async (id: number) => {
+    const response = await api.post<Channel>(`/channels/${id}/unarchive`);
+    return response.data;
+  },
+
+  reorder: async (channelIds: number[]) => {
+    const response = await api.post<Channel[]>('/channels/reorder', {
+      channel_ids: channelIds,
+    });
+    return response.data;
   },
 };
 

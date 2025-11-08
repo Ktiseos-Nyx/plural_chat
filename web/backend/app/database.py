@@ -74,6 +74,7 @@ class User(Base):
 
     # Relationships
     members = relationship("Member", back_populates="user", cascade="all, delete-orphan")
+    channels = relationship("Channel", back_populates="user", cascade="all, delete-orphan")
     audit_logs = relationship("AuditLog", back_populates="user", cascade="all, delete-orphan")
 
     def set_pk_token(self, token: str):
@@ -154,12 +155,34 @@ class Member(Base):
         return None
 
 
+class Channel(Base):
+    """Conversation channel/room for organizing messages"""
+    __tablename__ = "channels"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    name = Column(String(100), nullable=False)
+    description = Column(Text, nullable=True)
+    color = Column(String(7), nullable=True)  # Hex color like #8b5cf6
+    emoji = Column(String(10), nullable=True)  # Optional emoji icon
+    is_default = Column(Boolean, default=False)
+    is_archived = Column(Boolean, default=False, index=True)
+    position = Column(Integer, default=0)  # For custom ordering
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    # Relationships
+    user = relationship("User", back_populates="channels")
+    messages = relationship("Message", back_populates="channel", cascade="all, delete-orphan")
+
+
 class Message(Base):
     """Chat message"""
     __tablename__ = "messages"
 
     id = Column(Integer, primary_key=True, index=True)
     member_id = Column(Integer, ForeignKey("members.id"), nullable=False)
+    channel_id = Column(Integer, ForeignKey("channels.id"), nullable=True, index=True)
     content = Column(Text, nullable=False)
     timestamp = Column(DateTime, default=datetime.utcnow, index=True)
     edited_at = Column(DateTime, nullable=True)
@@ -167,6 +190,7 @@ class Message(Base):
 
     # Relationships
     member = relationship("Member", back_populates="messages")
+    channel = relationship("Channel", back_populates="messages")
 
 
 class Session(Base):
