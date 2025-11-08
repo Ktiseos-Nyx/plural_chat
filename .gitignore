@@ -75,6 +75,9 @@ Thumbs.db
 *.backup
 
 # User configuration that shouldn't be shared
+.env
+.env.*
+!.env.example
 config.ini
 settings.conf
 *.secret
