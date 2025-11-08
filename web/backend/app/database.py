@@ -220,7 +220,7 @@ class AuditLog(Base):
     ip_address = Column(String, nullable=True)
     user_agent = Column(String, nullable=True)
     success = Column(Boolean, default=True)
-    metadata = Column(Text, nullable=True)  # JSON string for additional data
+    extra_data = Column(Text, nullable=True)  # JSON string for additional data (renamed from metadata to avoid SQLAlchemy conflict)
     timestamp = Column(DateTime, default=datetime.utcnow, index=True)
 
     # Relationships
