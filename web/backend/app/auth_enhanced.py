@@ -78,30 +78,43 @@ def get_password_hash(password: str) -> str:
 # JWT Token utilities
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
     """Create JWT access token"""
+    import logging
+    logger = logging.getLogger(__name__)
+
     to_encode = data.copy()
     if expires_delta:
         expire = datetime.utcnow() + expires_delta
     else:
         expire = datetime.utcnow() + timedelta(days=ACCESS_TOKEN_EXPIRE_DAYS)
     to_encode.update({"exp": expire})
+    logger.info(f"Creating token with data: {to_encode}, SECRET_KEY: {SECRET_KEY[:10]}...")
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+    logger.info(f"Created token: {encoded_jwt[:50]}...")
     return encoded_jwt
 
 
 def verify_token(token: str) -> schemas.TokenData:
     """Verify and decode JWT token"""
+    import logging
+    logger = logging.getLogger(__name__)
+
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
         headers={"WWW-Authenticate": "Bearer"},
     )
     try:
+        logger.info(f"Verifying token with SECRET_KEY: {SECRET_KEY[:10]}...")
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        logger.info(f"Token payload: {payload}")
         user_id: int = payload.get("sub")
+        logger.info(f"Extracted user_id: {user_id}, type: {type(user_id)}")
         if user_id is None:
+            logger.error("user_id is None")
             raise credentials_exception
         return schemas.TokenData(user_id=user_id)
-    except JWTError:
+    except JWTError as e:
+        logger.error(f"JWT verification error: {e}")
         raise credentials_exception
 
 
@@ -125,18 +138,27 @@ def get_current_user(
     db: Session = Depends(get_db)
 ) -> models.User:
     """Get current authenticated user from JWT token"""
+    import logging
+    logger = logging.getLogger(__name__)
+
+    logger.info(f"get_current_user called with token: {credentials.credentials[:50]}...")
     token_data = verify_token(credentials.credentials)
+    logger.info(f"Token verified, looking up user with id: {token_data.user_id}")
     user = db.query(models.User).filter(models.User.id == token_data.user_id).first()
     if user is None:
+        logger.error(f"User not found with id: {token_data.user_id}")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="User not found"
         )
+    logger.info(f"User found: {user.username}, is_active: {user.is_active}")
     if not user.is_active:
+        logger.error(f"User {user.username} is inactive")
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Inactive user"
         )
+    logger.info(f"Returning active user: {user.username}")
     return user
 
 
