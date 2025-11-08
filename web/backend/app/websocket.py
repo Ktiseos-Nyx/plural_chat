@@ -57,12 +57,11 @@ async def connect(sid, environ, auth):
             logger.warning(f"Connection {sid} rejected: No token")
             return False
 
-        # TODO: Verify token and get user_id
-        # For now, we'll extract it from the token
-        from .auth import verify_token
+        # Verify token and get user_id
+        from .auth_enhanced import verify_token
         try:
             token_data = verify_token(token)
-            user_id = token_data.user_id
+            user_id = str(token_data.user_id)
             connection_manager.connect(sid, user_id)
 
             # Store user_id in session
@@ -138,16 +137,51 @@ async def send_message(sid, data):
             finally:
                 db.close()
 
-        # Regular message handling
-        # TODO: Save message to database and get full message object
-        # For now, just broadcast it
-        message_data = {
-            'id': 0,  # TODO: Get from database
-            'member_id': member_id,
-            'content': content,
-            'timestamp': None,  # TODO: Get from database
-            'member': {}  # TODO: Get from database
-        }
+        # Regular message handling - Save to database
+        from .database import SessionLocal
+        from datetime import datetime
+
+        db = SessionLocal()
+        try:
+            # Get the member to include in response
+            member = db.query(models.Member).filter(
+                models.Member.id == member_id,
+                models.Member.user_id == int(user_id)
+            ).first()
+
+            if not member:
+                return {'success': False, 'error': 'Member not found or unauthorized'}
+
+            # Get channel_id from data if provided
+            channel_id = data.get('channel_id')
+
+            # Create and save message
+            new_message = models.Message(
+                member_id=member_id,
+                channel_id=channel_id,
+                content=content,
+                timestamp=datetime.utcnow()
+            )
+            db.add(new_message)
+            db.commit()
+            db.refresh(new_message)
+
+            # Prepare message data for broadcast
+            message_data = {
+                'id': new_message.id,
+                'member_id': member_id,
+                'channel_id': channel_id,
+                'content': content,
+                'timestamp': new_message.timestamp.isoformat(),
+                'member': {
+                    'id': member.id,
+                    'name': member.name,
+                    'color': member.color,
+                    'avatar_path': member.avatar_path
+                }
+            }
+        finally:
+            db.close()
 
         # Broadcast to all connected sessions of this user
         sessions = connection_manager.get_user_sessions(user_id)
@@ -155,15 +189,15 @@ async def send_message(sid, data):
             await sio_app.emit('message', message_data, room=session_id)
 
         # Check if message mentions an AI character
-        from .database import SessionLocal
         from .ai_characters import ai_manager
         import re
 
-        db = SessionLocal()
+        # Reopen database for AI character check
+        db2 = SessionLocal()
         try:
             # Find AI characters mentioned in message (@Name or just Name at start)
             # Get all AI characters for this user
-            ai_characters = db.query(models.Member).filter(
+            ai_characters = db2.query(models.Member).filter(
                 models.Member.user_id == int(user_id),
                 models.Member.is_ai == True,
                 models.Member.ai_enabled == True
@@ -180,7 +214,7 @@ async def send_message(sid, data):
 
             if mentioned_ai:
                 # Get recent conversation history
-                recent_messages = db.query(models.Message).join(models.Member).filter(
+                recent_messages = db2.query(models.Message).join(models.Member).filter(
                     models.Member.user_id == int(user_id)
                 ).order_by(models.Message.timestamp.desc()).limit(10).all()
 
@@ -189,7 +223,7 @@ async def send_message(sid, data):
                     member=mentioned_ai,
                     message=content,
                     conversation_history=list(reversed(recent_messages)),
-                    db=db
+                    db=db2
                 )
 
                 if ai_response:
@@ -210,7 +244,7 @@ async def send_message(sid, data):
                     for session_id in sessions:
                         await sio_app.emit('message', ai_message, room=session_id)
         finally:
-            db.close()
+            db2.close()
 
         return {'success': True}
 

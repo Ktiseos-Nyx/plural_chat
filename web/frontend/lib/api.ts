@@ -178,6 +178,24 @@ export const securityAPI = {
     const response = await api.get<AuditLog[]>(`/security/audit-logs/security?limit=${limit}`);
     return response.data;
   },
+
+  // Change password
+  changePassword: async (data: {
+    current_password: string;
+    new_password: string;
+  }): Promise<{ success: boolean; message: string }> => {
+    const response = await api.post('/security/change-password', data);
+    return response.data;
+  },
+
+  // Update profile
+  updateProfile: async (data: {
+    username?: string;
+    email?: string;
+  }): Promise<{ success: boolean; message: string }> => {
+    const response = await api.patch('/security/profile', data);
+    return response.data;
+  },
 };
 
 // Members API

@@ -9,7 +9,7 @@ import { Card, Tabs, Input, Button, Form, message, Alert } from 'antd';
 import { UserOutlined, LockOutlined, SafetyOutlined, HistoryOutlined, LinkOutlined, SyncOutlined } from '@ant-design/icons';
 import Link from 'next/link';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
-import { authAPI } from '@/lib/api';
+import { authAPI, securityAPI } from '@/lib/api';
 
 export default function SettingsPage() {
   const router = useRouter();
@@ -24,10 +24,13 @@ export default function SettingsPage() {
   const handleProfileUpdate = async (values: any) => {
     setLoading(true);
     try {
-      // TODO: Implement profile update API call
+      await securityAPI.updateProfile({
+        username: values.username,
+        email: values.email || undefined,
+      });
       message.success('Profile updated successfully');
-    } catch (error) {
-      message.error('Failed to update profile');
+    } catch (error: any) {
+      message.error(error.response?.data?.detail || 'Failed to update profile');
     } finally {
       setLoading(false);
     }
@@ -36,10 +39,13 @@ export default function SettingsPage() {
   const handlePasswordChange = async (values: any) => {
     setLoading(true);
     try {
-      // TODO: Implement password change API call
+      await securityAPI.changePassword({
+        current_password: values.current_password,
+        new_password: values.new_password,
+      });
       message.success('Password changed successfully');
-    } catch (error) {
-      message.error('Failed to change password');
+    } catch (error: any) {
+      message.error(error.response?.data?.detail || 'Failed to change password');
     } finally {
       setLoading(false);
     }

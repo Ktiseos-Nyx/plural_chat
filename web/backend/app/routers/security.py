@@ -71,6 +71,18 @@ class TOTPDisableRequest(BaseModel):
     totp_code: Optional[str] = None
 
 
+class ChangePasswordRequest(BaseModel):
+    """Change password request"""
+    current_password: str
+    new_password: str
+
+
+class UpdateProfileRequest(BaseModel):
+    """Update profile request"""
+    username: Optional[str] = None
+    email: Optional[str] = None
+
+
 class AuditLogResponse(BaseModel):
     """Audit log entry"""
     id: int
@@ -317,6 +329,157 @@ async def login_with_2fa(
         requires_2fa=False,
         message="Login successful"
     )
+
+
+@router.post("/change-password")
+async def change_password(
+    password_request: ChangePasswordRequest,
+    request: Request,
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Change user password (requires current password)
+    """
+    from ..auth_enhanced import get_password_hash
+
+    ip_address = get_client_ip(request)
+    user_agent = get_user_agent(request)
+
+    # Verify current password
+    if not current_user.hashed_password or not verify_password(
+        password_request.current_password,
+        current_user.hashed_password
+    ):
+        # Log failed attempt
+        audit_logger.log(
+            db=db,
+            event_type="password_change_failed",
+            category=audit_logger.CATEGORY_SECURITY,
+            user_id=current_user.id,
+            description="Failed password change - invalid current password",
+            ip_address=ip_address,
+            user_agent=user_agent,
+            success=False
+        )
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Current password is incorrect"
+        )
+
+    # Validate new password
+    if len(password_request.new_password) < 8:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="New password must be at least 8 characters long"
+        )
+
+    # Update password
+    current_user.hashed_password = get_password_hash(password_request.new_password)
+    db.commit()
+
+    # Log successful password change
+    audit_logger.log(
+        db=db,
+        event_type="password_changed",
+        category=audit_logger.CATEGORY_SECURITY,
+        user_id=current_user.id,
+        description="Password changed successfully",
+        ip_address=ip_address,
+        user_agent=user_agent
+    )
+
+    return {
+        "success": True,
+        "message": "Password changed successfully"
+    }
+
+
+@router.patch("/profile")
+async def update_profile(
+    profile_request: UpdateProfileRequest,
+    request: Request,
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Update user profile (username and/or email)
+    """
+    ip_address = get_client_ip(request)
+    user_agent = get_user_agent(request)
+
+    changes = []
+
+    # Update username if provided
+    if profile_request.username and profile_request.username != current_user.username:
+        # Validate username length
+        if len(profile_request.username) < 3:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Username must be at least 3 characters long"
+            )
+
+        # Check if username is already taken
+        existing_user = db.query(models.User).filter(
+            models.User.username == profile_request.username,
+            models.User.id != current_user.id
+        ).first()
+
+        if existing_user:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Username already taken"
+            )
+
+        current_user.username = profile_request.username
+        changes.append("username")
+
+    # Update email if provided
+    if profile_request.email is not None:
+        if profile_request.email != current_user.email:
+            # Validate email format if not empty
+            if profile_request.email and not profile_request.email.strip():
+                profile_request.email = None
+
+            if profile_request.email:
+                # Check if email is already taken
+                existing_email = db.query(models.User).filter(
+                    models.User.email == profile_request.email,
+                    models.User.id != current_user.id
+                ).first()
+
+                if existing_email:
+                    raise HTTPException(
+                        status_code=status.HTTP_409_CONFLICT,
+                        detail="Email already registered"
+                    )
+
+            current_user.email = profile_request.email
+            changes.append("email")
+
+    if not changes:
+        return {
+            "success": True,
+            "message": "No changes made"
+        }
+
+    db.commit()
+
+    # Log profile update
+    audit_logger.log(
+        db=db,
+        event_type="profile_updated",
+        category=audit_logger.CATEGORY_PROFILE,
+        user_id=current_user.id,
+        description=f"Updated profile: {', '.join(changes)}",
+        ip_address=ip_address,
+        user_agent=user_agent
+    )
+
+    return {
+        "success": True,
+        "message": f"Profile updated successfully ({', '.join(changes)})"
+    }
 
 
 # 2FA Endpoints
