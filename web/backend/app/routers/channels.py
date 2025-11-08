@@ -9,7 +9,7 @@ from datetime import datetime
 
 from ..database import get_db, Channel, Message, User
 from ..schemas import Channel as ChannelSchema, ChannelCreate, ChannelUpdate
-from ..auth import get_current_user
+from ..auth_enhanced import get_current_user
 from ..websocket import broadcast_to_user
 
 router = APIRouter(prefix="/channels", tags=["channels"])
