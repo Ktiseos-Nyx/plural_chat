@@ -1,7 +1,7 @@
 """
 Messages management router
 """
-from fastapi import APIRouter, Depends, HTTPException, status, Query
+from fastapi import APIRouter, Depends, HTTPException, status, Query, BackgroundTasks
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 from sqlalchemy import desc, and_
@@ -14,6 +14,7 @@ import io
 from ..database import get_db
 from .. import models, schemas
 from ..auth import get_current_user
+from ..websocket import broadcast_to_user
 
 router = APIRouter()
 
@@ -44,6 +45,7 @@ async def get_messages(
 @router.post("/", response_model=schemas.Message, status_code=status.HTTP_201_CREATED)
 async def send_message(
     message: schemas.MessageCreate,
+    background_tasks: BackgroundTasks,
     current_user: models.User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
@@ -86,7 +88,32 @@ async def send_message(
     # Load member relationship for response
     db.refresh(new_message, ['member'])
 
-    # TODO: Broadcast via WebSocket
+    # Broadcast message to all user's sessions via WebSocket
+    background_tasks.add_task(
+        broadcast_to_user,
+        str(current_user.id),
+        "message",
+        {
+            "id": new_message.id,
+            "member_id": new_message.member_id,
+            "channel_id": new_message.channel_id,
+            "content": new_message.content,
+            "timestamp": new_message.timestamp.isoformat(),
+            "member": {
+                "id": new_message.member.id,
+                "user_id": new_message.member.user_id,
+                "name": new_message.member.name,
+                "pronouns": new_message.member.pronouns,
+                "color": new_message.member.color,
+                "avatar_path": new_message.member.avatar_path,
+                "description": new_message.member.description,
+                "pk_id": new_message.member.pk_id,
+                "proxy_tags": new_message.member.proxy_tags,
+                "created_at": new_message.member.created_at.isoformat()
+            }
+        }
+    )
+
     return new_message
 
 
