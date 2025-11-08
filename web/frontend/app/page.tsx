@@ -1,5 +1,5 @@
 /**
- * Main chat page
+ * Main chat page - Now with shadcn/ui components!
  */
 'use client';
 
@@ -8,19 +8,22 @@ import { useRouter } from 'next/navigation';
 import { useStore } from '@/lib/store';
 import { membersAPI, messagesAPI } from '@/lib/api';
 import { useWebSocket } from '@/lib/useWebSocket';
-import { Button, Badge } from 'antd';
-import {
-  MenuOutlined,
-  CloseOutlined,
-  SettingOutlined,
-} from '@ant-design/icons';
-import MemberSidebar from '@/components/MemberSidebar';
-import ChatList from '@/components/ChatList';
-import MessageInput from '@/components/MessageInput';
+import { ChatInterface } from '@/components/ui/chat-interface';
 
 export default function HomePage() {
   const router = useRouter();
-  const { user, setMembers, setMessages, sidebarOpen, toggleSidebar, connected } = useStore();
+  const {
+    user,
+    members,
+    messages,
+    selectedMember,
+    sidebarOpen,
+    setMembers,
+    setMessages,
+    setSelectedMember,
+    toggleSidebar,
+    addMessage,
+  } = useStore();
   const [loading, setLoading] = useState(true);
 
   // Initialize WebSocket
@@ -36,12 +39,12 @@ export default function HomePage() {
     // Load initial data
     const loadData = async () => {
       try {
-        const [members, messages] = await Promise.all([
+        const [membersData, messagesData] = await Promise.all([
           membersAPI.getAll(),
           messagesAPI.getRecent(50),
         ]);
-        setMembers(members);
-        setMessages(messages);
+        setMembers(membersData);
+        setMessages(messagesData);
       } catch (error) {
         console.error('Failed to load data:', error);
       } finally {
@@ -52,55 +55,57 @@ export default function HomePage() {
     loadData();
   }, [user, router, setMembers, setMessages]);
 
+  const handleSendMessage = async (content: string) => {
+    if (!selectedMember) return;
+
+    try {
+      const message = await messagesAPI.create({
+        member_id: selectedMember.id,
+        content,
+      });
+      addMessage(message);
+    } catch (error) {
+      console.error('Failed to send message:', error);
+    }
+  };
+
+  const handleAddMember = () => {
+    router.push('/settings');
+  };
+
+  const handleSettings = () => {
+    router.push('/settings');
+  };
+
+  const handleLogout = () => {
+    // Clear user data and redirect to login
+    useStore.getState().setUser(null);
+    router.push('/login');
+  };
+
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading Plural Chat...</p>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Loading Plural Chat...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="flex h-screen overflow-hidden">
-      {/* Sidebar */}
-      <MemberSidebar />
-
-      {/* Main Content */}
-      <div className="flex-1 flex flex-col">
-        {/* Header */}
-        <div className="bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Button
-              type="text"
-              icon={sidebarOpen ? <CloseOutlined /> : <MenuOutlined />}
-              onClick={toggleSidebar}
-            />
-            <h1 className="text-xl font-semibold">Plural Chat</h1>
-            <Badge
-              status={connected ? 'success' : 'default'}
-              text={connected ? 'Connected' : 'Disconnected'}
-            />
-          </div>
-          <div className="flex items-center gap-2">
-            <Button
-              type="text"
-              icon={<SettingOutlined />}
-              onClick={() => {
-                // TODO: Open settings
-              }}
-            />
-          </div>
-        </div>
-
-        {/* Chat Area */}
-        <ChatList />
-
-        {/* Input */}
-        <MessageInput />
-      </div>
-    </div>
+    <ChatInterface
+      members={members}
+      messages={messages}
+      selectedMember={selectedMember}
+      onSelectMember={setSelectedMember}
+      onSendMessage={handleSendMessage}
+      onAddMember={handleAddMember}
+      onSettings={handleSettings}
+      onLogout={handleLogout}
+      sidebarOpen={sidebarOpen}
+      onToggleSidebar={toggleSidebar}
+    />
   );
 }
