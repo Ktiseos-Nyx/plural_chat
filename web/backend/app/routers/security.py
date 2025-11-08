@@ -39,6 +39,19 @@ class LoginResponse(BaseModel):
     message: Optional[str] = None
 
 
+class RegisterRequest(BaseModel):
+    """User registration request"""
+    username: str
+    password: str
+    email: Optional[str] = None
+
+
+class RegisterResponse(BaseModel):
+    """Registration response"""
+    success: bool
+    message: str
+
+
 class TOTPSetupResponse(BaseModel):
     """2FA setup response"""
     secret: str
@@ -84,6 +97,93 @@ def get_user_agent(request: Request) -> str:
 
 
 # Authentication Endpoints
+
+@router.post("/register", response_model=RegisterResponse)
+async def register_user(
+    register_request: RegisterRequest,
+    request: Request,
+    db: Session = Depends(get_db)
+):
+    """
+    Register a new user with username and password
+
+    Args:
+        username: Unique username (3+ characters)
+        password: Password (8+ characters)
+        email: Optional email address
+    """
+    from ..auth_enhanced import get_password_hash
+
+    ip_address = get_client_ip(request)
+    user_agent = get_user_agent(request)
+
+    # Validate username
+    if len(register_request.username) < 3:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Username must be at least 3 characters long"
+        )
+
+    # Validate password
+    if len(register_request.password) < 8:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Password must be at least 8 characters long"
+        )
+
+    # Check if username already exists
+    existing_user = db.query(models.User).filter(
+        models.User.username == register_request.username
+    ).first()
+
+    if existing_user:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Username already taken"
+        )
+
+    # Check if email already exists (if provided)
+    if register_request.email:
+        existing_email = db.query(models.User).filter(
+            models.User.email == register_request.email
+        ).first()
+
+        if existing_email:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Email already registered"
+            )
+
+    # Create new user
+    hashed_password = get_password_hash(register_request.password)
+    new_user = models.User(
+        username=register_request.username,
+        hashed_password=hashed_password,
+        email=register_request.email,
+        created_at=datetime.utcnow(),
+        last_login=datetime.utcnow()
+    )
+
+    db.add(new_user)
+    db.commit()
+    db.refresh(new_user)
+
+    # Log registration
+    audit_logger.log(
+        db=db,
+        event_type="user_registered",
+        category=audit_logger.CATEGORY_AUTH,
+        user_id=new_user.id,
+        description=f"New user registered: {register_request.username}",
+        ip_address=ip_address,
+        user_agent=user_agent
+    )
+
+    return RegisterResponse(
+        success=True,
+        message="Account created successfully! You can now log in."
+    )
+
 
 @router.post("/login", response_model=LoginResponse)
 async def login_with_2fa(

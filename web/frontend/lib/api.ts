@@ -11,16 +11,39 @@ export const api = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
+  timeout: 10000, // 10 second timeout to prevent hanging
 });
 
 // Request interceptor to add auth token
 api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('pk_token');
+  const token = localStorage.getItem('access_token') || localStorage.getItem('pk_token');
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
   return config;
 });
+
+// Response interceptor to handle errors
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    // Log errors for debugging
+    console.error('API Error:', {
+      url: error.config?.url,
+      method: error.config?.method,
+      status: error.response?.status,
+      message: error.message,
+      detail: error.response?.data?.detail
+    });
+
+    // Handle network errors
+    if (!error.response) {
+      error.message = 'Cannot connect to server. Please check if the backend is running.';
+    }
+
+    return Promise.reject(error);
+  }
+);
 
 // Types for security endpoints
 export interface LoginRequest {
