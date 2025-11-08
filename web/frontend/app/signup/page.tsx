@@ -8,6 +8,7 @@ import { useRouter } from 'next/navigation';
 import { Input, Button, Card, Alert } from 'antd';
 import { LockOutlined, UserOutlined, MailOutlined } from '@ant-design/icons';
 import { securityAPI } from '@/lib/api';
+import { useStore } from '@/lib/store';
 import Link from 'next/link';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
 
@@ -20,6 +21,7 @@ export default function SignupPage() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
   const router = useRouter();
+  const { setUser } = useStore();
 
   const handleSignup = async () => {
     // Validation
@@ -52,6 +54,7 @@ export default function SignupPage() {
     setError('');
 
     try {
+      // Step 1: Register the user
       await securityAPI.register({
         username: username.trim(),
         password: password.trim(),
@@ -59,9 +62,35 @@ export default function SignupPage() {
       });
 
       setSuccess(true);
-      setTimeout(() => {
-        router.push('/login');
-      }, 2000);
+
+      // Step 2: Auto-login the user
+      try {
+        const loginResponse = await securityAPI.login({
+          username: username.trim(),
+          password: password.trim(),
+        });
+
+        if (loginResponse.access_token) {
+          // Fetch user data and set in store
+          const userData = await securityAPI.verifyToken();
+          setUser(userData);
+
+          // Redirect to home page
+          setTimeout(() => {
+            router.push('/');
+          }, 1500);
+        } else {
+          // Registration succeeded but auto-login failed, redirect to login
+          setTimeout(() => {
+            router.push('/login');
+          }, 2000);
+        }
+      } catch (loginError) {
+        // Registration succeeded but auto-login failed, redirect to login
+        setTimeout(() => {
+          router.push('/login');
+        }, 2000);
+      }
     } catch (err: any) {
       setError(
         err.response?.data?.detail ||
@@ -85,7 +114,7 @@ export default function SignupPage() {
               Account Created!
             </h1>
             <p className="text-muted-foreground mb-4">
-              Redirecting you to login...
+              Logging you in...
             </p>
           </div>
         </Card>

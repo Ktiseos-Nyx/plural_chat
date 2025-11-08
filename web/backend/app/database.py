@@ -25,7 +25,7 @@ if DATABASE_URL.startswith("postgres://"):
 engine = create_engine(
     DATABASE_URL,
     connect_args={"check_same_thread": False} if DATABASE_URL.startswith("sqlite") else {},
-    echo=True  # Set to False in production
+    echo=False  # Disabled to prevent logging sensitive data (passwords, user info, etc.)
 )
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
