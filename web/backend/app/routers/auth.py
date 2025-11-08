@@ -18,58 +18,51 @@ logger = logging.getLogger(__name__)
 PK_API_URL = "https://api.pluralkit.me/v2"
 
 
-@router.post("/login", response_model=schemas.LoginResponse)
-async def login(request: schemas.LoginRequest, db: Session = Depends(get_db)):
+@router.post("/set-pk-token")
+async def set_pluralkit_token(
+    request: schemas.LoginRequest,
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
     """
-    Login with PluralKit token
-    Creates or updates user and syncs system info
+    Store PluralKit token for syncing members
+
+    NOTE: This does NOT log you in - use /security/login for authentication.
+    This only saves your PK token so you can sync members from PluralKit.
     """
     pk_api = PluralKitAPI(request.pk_token)
 
-    # Verify token and get system info
+    # Verify token is valid
     try:
         system_info = pk_api.get_system_info()
         if not system_info:
             raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
+                status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Invalid PluralKit token"
             )
     except Exception as e:
         logger.error(f"PluralKit API error: {e}")
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
+            status_code=status.HTTP_400_BAD_REQUEST,
             detail="Failed to verify PluralKit token"
         )
 
     system_id = system_info.get("id")
     system_name = system_info.get("name", "Unknown System")
 
-    # Find or create user
-    user = db.query(models.User).filter(models.User.id == system_id).first()
-    if not user:
-        user = models.User(
-            id=system_id,
-            pk_token=request.pk_token,  # TODO: Encrypt this
-            system_name=system_name
-        )
-        db.add(user)
-        db.commit()
-        db.refresh(user)
-        logger.info(f"Created new user: {system_id} ({system_name})")
-    else:
-        # Update token and name
-        user.pk_token = request.pk_token
-        user.system_name = system_name
-        db.commit()
-        logger.info(f"Updated user: {system_id} ({system_name})")
+    # Store encrypted PK token and system info
+    current_user.set_pk_token(request.pk_token)
+    current_user.pk_system_id = system_id
+    current_user.system_name = system_name
+    db.commit()
 
-    # Create access token
-    access_token = create_access_token(data={"sub": system_id})
+    logger.info(f"User {current_user.username} linked PK system: {system_id} ({system_name})")
 
     return {
-        "user": user,
-        "access_token": access_token,
-        "token_type": "bearer"
+        "success": True,
+        "message": "PluralKit token saved successfully",
+        "system_id": system_id,
+        "system_name": system_name
     }
 
 
@@ -87,8 +80,17 @@ async def sync_from_pluralkit(
     """
     Sync members from PluralKit
     Downloads avatars and updates member data
+
+    NOTE: You must set your PluralKit token first using /auth/set-pk-token
     """
-    pk_api = PluralKitAPI(current_user.pk_token)
+    pk_token = current_user.get_pk_token()
+    if not pk_token:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No PluralKit token set. Use /auth/set-pk-token first."
+        )
+
+    pk_api = PluralKitAPI(pk_token)
 
     try:
         # Get members from PK
