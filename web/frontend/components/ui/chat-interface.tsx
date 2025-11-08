@@ -21,7 +21,6 @@ interface ChatInterfaceProps {
   onSelectMember: (member: Member) => void
   onSelectChannel: (channel: Channel) => void
   onSendMessage: (message: string) => void
-  onAddMember?: () => void
   onAddChannel?: () => void
   onEditChannel?: (channel: Channel) => void
   onSettings?: () => void
@@ -40,7 +39,6 @@ export function ChatInterface({
   onSelectMember,
   onSelectChannel,
   onSendMessage,
-  onAddMember,
   onAddChannel,
   onEditChannel,
   onSettings,
@@ -75,7 +73,6 @@ export function ChatInterface({
             members={members}
             selectedMember={selectedMember}
             onSelectMember={onSelectMember}
-            onAddMember={onAddMember}
           />
         </div>
       )}

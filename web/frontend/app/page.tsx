@@ -110,9 +110,6 @@ export default function HomePage() {
     }
   };
 
-  const handleAddMember = () => {
-    router.push('/settings');
-  };
 
   const handleAddChannel = () => {
     setEditingChannel(null);
@@ -195,7 +192,6 @@ export default function HomePage() {
         onSelectMember={setSelectedMember}
         onSelectChannel={setSelectedChannel}
         onSendMessage={handleSendMessage}
-        onAddMember={handleAddMember}
         onAddChannel={handleAddChannel}
         onEditChannel={handleEditChannel}
         onSettings={handleSettings}

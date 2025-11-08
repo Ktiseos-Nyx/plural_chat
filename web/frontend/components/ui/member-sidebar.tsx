@@ -15,7 +15,6 @@ interface MemberSidebarProps {
   members: Member[]
   selectedMember?: Member | null
   onSelectMember: (member: Member) => void
-  onAddMember?: () => void
   className?: string
 }
 
@@ -23,7 +22,6 @@ export function MemberSidebar({
   members,
   selectedMember,
   onSelectMember,
-  onAddMember,
   className,
 }: MemberSidebarProps) {
   const [searchQuery, setSearchQuery] = React.useState("")
@@ -59,12 +57,6 @@ export function MemberSidebar({
             <User className="h-5 w-5" />
             Members
           </h2>
-          {onAddMember && (
-            <Button onClick={onAddMember} size="icon" variant="ghost">
-              <Plus className="h-4 w-4" />
-              <span className="sr-only">Add member</span>
-            </Button>
-          )}
         </div>
 
         {/* Search */}
