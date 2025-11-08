@@ -18,7 +18,24 @@ fi
 cleanup() {
     echo ""
     echo "🛑 Shutting down servers..."
-    kill $(jobs -p) 2>/dev/null || true
+
+    # Kill backend process and its children
+    if [ ! -z "$BACKEND_PID" ]; then
+        pkill -P $BACKEND_PID 2>/dev/null || true
+        kill $BACKEND_PID 2>/dev/null || true
+    fi
+
+    # Kill frontend process and its children
+    if [ ! -z "$FRONTEND_PID" ]; then
+        pkill -P $FRONTEND_PID 2>/dev/null || true
+        kill $FRONTEND_PID 2>/dev/null || true
+    fi
+
+    # Kill any remaining uvicorn/node processes on these ports
+    lsof -ti:8000 | xargs kill -9 2>/dev/null || true
+    lsof -ti:3000 | xargs kill -9 2>/dev/null || true
+
+    echo "✅ All servers stopped"
     exit 0
 }
 
