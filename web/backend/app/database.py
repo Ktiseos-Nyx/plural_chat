@@ -67,6 +67,10 @@ class User(Base):
     last_login = Column(DateTime, nullable=True)
     last_sync = Column(DateTime, nullable=True)
 
+    # User preferences
+    theme_color = Column(String, nullable=True, default="#6c757d")  # Hex color for UI theming
+    avatar_path = Column(String, nullable=True)  # Path to user's avatar image
+
     # 2FA / MFA (Optional TOTP-based authentication)
     totp_enabled = Column(Boolean, default=False)
     totp_secret_encrypted = Column(LargeBinary, nullable=True)  # Encrypted TOTP secret

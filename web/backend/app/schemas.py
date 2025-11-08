@@ -8,8 +8,12 @@ from typing import Optional, List
 
 # User/Auth Schemas
 class UserBase(BaseModel):
-    id: str
+    id: int
+    username: str
+    email: Optional[str] = None
     system_name: Optional[str] = None
+    theme_color: Optional[str] = None
+    avatar_path: Optional[str] = None
 
 class UserCreate(BaseModel):
     pk_token: str
@@ -17,6 +21,8 @@ class UserCreate(BaseModel):
 class User(UserBase):
     created_at: datetime
     last_sync: Optional[datetime] = None
+    last_login: Optional[datetime] = None
+    totp_enabled: bool = False
 
     class Config:
         from_attributes = True

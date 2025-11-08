@@ -3,16 +3,18 @@
  */
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Card, Tabs, Input, Button, Form, message, Alert } from 'antd';
-import { UserOutlined, LockOutlined, SafetyOutlined, HistoryOutlined, LinkOutlined, SyncOutlined } from '@ant-design/icons';
+import { Card, Tabs, Input, Button, Form, message, Alert, Upload } from 'antd';
+import { UserOutlined, LockOutlined, SafetyOutlined, HistoryOutlined, LinkOutlined, SyncOutlined, BgColorsOutlined, CameraOutlined } from '@ant-design/icons';
 import Link from 'next/link';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
 import { authAPI, securityAPI } from '@/lib/api';
+import { useStore } from '@/lib/store';
 
 export default function SettingsPage() {
   const router = useRouter();
+  const { user, setUser } = useStore();
   const [activeTab, setActiveTab] = useState<string>('profile');
   const [loading, setLoading] = useState(false);
 
@@ -21,19 +23,78 @@ export default function SettingsPage() {
   const [pkLoading, setPkLoading] = useState(false);
   const [pkSynced, setPkSynced] = useState(false);
 
+  // Avatar upload state
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+
+  // Theme color state
+  const [themeColor, setThemeColor] = useState('#6c757d');
+
+  // Load user data on mount
+  useEffect(() => {
+    if (!user) {
+      router.push('/login');
+    } else {
+      setThemeColor(user.theme_color || '#6c757d');
+      if (user.avatar_path) {
+        setAvatarPreview(`http://localhost:8000${user.avatar_path}`);
+      }
+    }
+  }, [user, router]);
+
   const handleProfileUpdate = async (values: any) => {
     setLoading(true);
     try {
+      // Update profile data
       await securityAPI.updateProfile({
         username: values.username,
         email: values.email || undefined,
+        theme_color: themeColor,
       });
+
+      // Upload avatar if selected
+      if (avatarFile) {
+        await securityAPI.uploadAvatar(avatarFile);
+        setAvatarFile(null); // Clear after upload
+      }
+
+      // Refresh user data
+      const userData = await authAPI.verifyToken();
+      setUser(userData);
+
       message.success('Profile updated successfully');
     } catch (error: any) {
-      message.error(error.response?.data?.detail || 'Failed to update profile');
+      message.error(error.userMessage || error.response?.data?.detail || 'Failed to update profile');
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleAvatarChange = (file: File) => {
+    // Validate file type
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+    if (!allowedTypes.includes(file.type)) {
+      message.error('Only JPEG, PNG, GIF, and WebP images are allowed');
+      return false;
+    }
+
+    // Validate file size (5MB)
+    const maxSize = 5 * 1024 * 1024;
+    if (file.size > maxSize) {
+      message.error('File size must be less than 5MB');
+      return false;
+    }
+
+    setAvatarFile(file);
+
+    // Create preview
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      setAvatarPreview(e.target?.result as string);
+    };
+    reader.readAsDataURL(file);
+
+    return false; // Prevent automatic upload
   };
 
   const handlePasswordChange = async (values: any) => {
@@ -100,12 +161,40 @@ export default function SettingsPage() {
                   <div className="space-y-6">
                     <div>
                       <h2 className="text-xl font-semibold mb-4">Profile Information</h2>
+
+                      {/* Avatar Upload */}
+                      <div className="mb-6">
+                        <label className="block text-sm font-medium mb-3">Profile Picture</label>
+                        <div className="flex items-center gap-4">
+                          <div className="w-24 h-24 rounded-full overflow-hidden bg-gray-200 dark:bg-gray-700 flex items-center justify-center">
+                            {avatarPreview ? (
+                              <img src={avatarPreview} alt="Avatar" className="w-full h-full object-cover" />
+                            ) : (
+                              <UserOutlined className="text-4xl text-gray-400" />
+                            )}
+                          </div>
+                          <Upload
+                            accept="image/jpeg,image/png,image/gif,image/webp"
+                            beforeUpload={handleAvatarChange}
+                            showUploadList={false}
+                            maxCount={1}
+                          >
+                            <Button icon={<CameraOutlined />} size="large">
+                              Choose Avatar
+                            </Button>
+                          </Upload>
+                          <div className="text-xs text-gray-500">
+                            JPEG, PNG, GIF, WebP (Max 5MB)
+                          </div>
+                        </div>
+                      </div>
+
                       <Form
                         layout="vertical"
                         onFinish={handleProfileUpdate}
                         initialValues={{
-                          username: '',
-                          email: '',
+                          username: user?.username || '',
+                          email: user?.email || '',
                         }}
                       >
                         <Form.Item
@@ -130,6 +219,28 @@ export default function SettingsPage() {
                             placeholder="Enter your email"
                             size="large"
                           />
+                        </Form.Item>
+
+                        {/* Theme Color Picker */}
+                        <Form.Item label="Theme Color">
+                          <div className="flex gap-2">
+                            <Input
+                              size="large"
+                              prefix={<BgColorsOutlined />}
+                              placeholder="#6c757d"
+                              value={themeColor}
+                              onChange={(e) => setThemeColor(e.target.value)}
+                            />
+                            <input
+                              type="color"
+                              value={themeColor}
+                              onChange={(e) => setThemeColor(e.target.value)}
+                              className="w-12 h-10 rounded border cursor-pointer"
+                            />
+                          </div>
+                          <div className="text-xs text-gray-500 mt-1">
+                            Choose a color for your profile theme
+                          </div>
                         </Form.Item>
 
                         <Form.Item>

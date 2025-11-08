@@ -220,8 +220,22 @@ export const securityAPI = {
   updateProfile: async (data: {
     username?: string;
     email?: string;
+    theme_color?: string;
   }): Promise<{ success: boolean; message: string }> => {
     const response = await api.patch('/security/profile', data);
+    return response.data;
+  },
+
+  // Upload avatar
+  uploadAvatar: async (file: File): Promise<{ success: boolean; message: string; avatar_path: string }> => {
+    const formData = new FormData();
+    formData.append('file', file);
+
+    const response = await api.post('/security/profile/avatar', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
     return response.data;
   },
 };

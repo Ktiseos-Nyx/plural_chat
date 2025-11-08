@@ -26,9 +26,16 @@ export interface Message {
 }
 
 export interface User {
-  id: string;
-  pk_token: string;
+  id: number;
+  username: string;
+  email?: string;
   system_name?: string;
+  theme_color?: string;
+  avatar_path?: string;
+  created_at: string;
+  last_sync?: string;
+  last_login?: string;
+  totp_enabled: boolean;
 }
 
 interface AppState {

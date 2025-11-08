@@ -1,11 +1,14 @@
 """
 Security router for 2FA and audit logs
 """
-from fastapi import APIRouter, Depends, HTTPException, status, Request
+from fastapi import APIRouter, Depends, HTTPException, status, Request, UploadFile, File
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
 from typing import Optional, List
 from datetime import datetime, timedelta
+import os
+from pathlib import Path
+import uuid
 
 from ..database import get_db
 from .. import models
@@ -81,6 +84,7 @@ class UpdateProfileRequest(BaseModel):
     """Update profile request"""
     username: Optional[str] = None
     email: Optional[str] = None
+    theme_color: Optional[str] = None
 
 
 class AuditLogResponse(BaseModel):
@@ -457,6 +461,19 @@ async def update_profile(
             current_user.email = profile_request.email
             changes.append("email")
 
+    # Update theme color if provided
+    if profile_request.theme_color is not None:
+        if profile_request.theme_color != current_user.theme_color:
+            # Validate hex color format
+            if profile_request.theme_color and not profile_request.theme_color.startswith('#'):
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Theme color must be a hex color code (e.g., #6c757d)"
+                )
+
+            current_user.theme_color = profile_request.theme_color
+            changes.append("theme_color")
+
     if not changes:
         return {
             "success": True,
@@ -479,6 +496,81 @@ async def update_profile(
     return {
         "success": True,
         "message": f"Profile updated successfully ({', '.join(changes)})"
+    }
+
+
+@router.post("/profile/avatar")
+async def upload_avatar(
+    file: UploadFile = File(...),
+    request: Request = None,
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Upload a user avatar image
+    Supported formats: JPEG, PNG, GIF, WebP
+    Max size: 5MB
+    """
+    # Validate file type
+    allowed_types = ["image/jpeg", "image/png", "image/gif", "image/webp"]
+    if file.content_type not in allowed_types:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Invalid file type. Allowed: {', '.join(allowed_types)}"
+        )
+
+    # Validate file size (5MB max)
+    max_size = 5 * 1024 * 1024  # 5MB in bytes
+    contents = await file.read()
+    if len(contents) > max_size:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="File too large. Maximum size is 5MB"
+        )
+
+    # Create avatars directory if it doesn't exist
+    avatars_dir = Path("avatars")
+    avatars_dir.mkdir(exist_ok=True)
+
+    # Generate unique filename
+    file_ext = Path(file.filename).suffix or ".png"
+    filename = f"user_{current_user.id}_{uuid.uuid4().hex[:8]}{file_ext}"
+    file_path = avatars_dir / filename
+
+    # Delete old avatar if exists
+    if current_user.avatar_path:
+        old_path = Path(current_user.avatar_path)
+        if old_path.exists():
+            try:
+                old_path.unlink()
+            except Exception as e:
+                # Log but don't fail if old avatar can't be deleted
+                print(f"Warning: Could not delete old avatar: {e}")
+
+    # Save new avatar
+    with open(file_path, "wb") as f:
+        f.write(contents)
+
+    # Update user record
+    current_user.avatar_path = str(file_path)
+    db.commit()
+
+    # Log avatar update
+    if request:
+        audit_logger.log(
+            db=db,
+            event_type="avatar_updated",
+            category=audit_logger.CATEGORY_PROFILE,
+            user_id=current_user.id,
+            description="Avatar image updated",
+            ip_address=get_client_ip(request),
+            user_agent=get_user_agent(request)
+        )
+
+    return {
+        "success": True,
+        "message": "Avatar uploaded successfully",
+        "avatar_path": f"/avatars/{filename}"
     }
 
 
