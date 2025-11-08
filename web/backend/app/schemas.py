@@ -51,7 +51,7 @@ class MemberUpdate(BaseModel):
 
 class Member(MemberBase):
     id: int
-    user_id: str
+    user_id: int
     created_at: datetime
 
     class Config:
@@ -111,7 +111,7 @@ class Message(MessageBase):
 
 # Auth Schemas
 class TokenData(BaseModel):
-    user_id: Optional[str] = None
+    user_id: Optional[int] = None
 
 class LoginRequest(BaseModel):
     pk_token: str
