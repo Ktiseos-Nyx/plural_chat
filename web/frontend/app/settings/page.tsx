@@ -6,13 +6,20 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Card, Tabs, Input, Button, Form, message, Alert } from 'antd';
-import { UserOutlined, LockOutlined, SafetyOutlined, HistoryOutlined } from '@ant-design/icons';
+import { UserOutlined, LockOutlined, SafetyOutlined, HistoryOutlined, LinkOutlined, SyncOutlined } from '@ant-design/icons';
 import Link from 'next/link';
+import { ThemeToggle } from '@/components/ui/theme-toggle';
+import { authAPI } from '@/lib/api';
 
 export default function SettingsPage() {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<string>('profile');
   const [loading, setLoading] = useState(false);
+
+  // PluralKit sync state
+  const [pkToken, setPkToken] = useState('');
+  const [pkLoading, setPkLoading] = useState(false);
+  const [pkSynced, setPkSynced] = useState(false);
 
   const handleProfileUpdate = async (values: any) => {
     setLoading(true);
@@ -38,12 +45,37 @@ export default function SettingsPage() {
     }
   };
 
+  const handlePluralKitSync = async () => {
+    if (!pkToken.trim()) {
+      message.error('Please enter your PluralKit API token');
+      return;
+    }
+
+    setPkLoading(true);
+    try {
+      await authAPI.setPKToken(pkToken);
+      message.success('PluralKit members synced successfully!');
+      setPkSynced(true);
+      setPkToken(''); // Clear token after successful sync
+    } catch (error: any) {
+      message.error(
+        error.response?.data?.detail ||
+        'Failed to sync PluralKit members. Please check your token.'
+      );
+    } finally {
+      setPkLoading(false);
+    }
+  };
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 to-blue-50 p-6">
+    <div className="min-h-screen bg-gradient-to-br from-purple-50 to-blue-50 dark:from-gray-900 dark:to-gray-800 p-6">
       <div className="max-w-4xl mx-auto">
-        <div className="mb-6">
-          <h1 className="text-3xl font-bold text-gray-800">Settings</h1>
-          <p className="text-gray-600 mt-2">Manage your account settings and preferences</p>
+        <div className="mb-6 flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold">Settings</h1>
+            <p className="text-muted-foreground mt-2">Manage your account settings and preferences</p>
+          </div>
+          <ThemeToggle />
         </div>
 
         <Card>
@@ -161,6 +193,78 @@ export default function SettingsPage() {
                           </Button>
                         </Form.Item>
                       </Form>
+                    </div>
+
+                    <div className="border-t pt-6">
+                      <h2 className="text-xl font-semibold mb-4">PluralKit Integration</h2>
+                      <Alert
+                        message="Sync Your PluralKit Members"
+                        description="Connect your PluralKit account to automatically import your system members into Plural Chat. This allows you to chat as any of your members."
+                        type="info"
+                        showIcon
+                        icon={<LinkOutlined />}
+                        className="mb-4"
+                      />
+
+                      {pkSynced && (
+                        <Alert
+                          message="Members Synced Successfully!"
+                          description="Your PluralKit members have been imported. You can now select them when sending messages."
+                          type="success"
+                          showIcon
+                          closable
+                          onClose={() => setPkSynced(false)}
+                          className="mb-4"
+                        />
+                      )}
+
+                      <div className="space-y-4">
+                        <div>
+                          <label className="block text-sm font-medium mb-2">
+                            PluralKit API Token
+                          </label>
+                          <Input.Password
+                            size="large"
+                            prefix={<LockOutlined />}
+                            placeholder="Enter your PluralKit API token"
+                            value={pkToken}
+                            onChange={(e) => setPkToken(e.target.value)}
+                            onPressEnter={handlePluralKitSync}
+                          />
+                        </div>
+
+                        <Button
+                          type="primary"
+                          size="large"
+                          icon={<SyncOutlined />}
+                          loading={pkLoading}
+                          onClick={handlePluralKitSync}
+                        >
+                          Sync Members
+                        </Button>
+
+                        <Card className="bg-muted/50 mt-4">
+                          <h3 className="text-sm font-semibold mb-2 flex items-center gap-2">
+                            <LinkOutlined /> How to get your PluralKit token:
+                          </h3>
+                          <ol className="text-sm space-y-1 list-decimal list-inside text-muted-foreground">
+                            <li>
+                              Visit{' '}
+                              <a
+                                href="https://pluralkit.me/dash"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="underline font-medium text-primary"
+                              >
+                                pluralkit.me/dash
+                              </a>
+                            </li>
+                            <li>Click "Get API Token"</li>
+                            <li>Copy the token and paste it above</li>
+                            <li>Click "Sync Members" to import your system</li>
+                          </ol>
+                        </Card>
+                      </div>
                     </div>
                   </div>
                 ),

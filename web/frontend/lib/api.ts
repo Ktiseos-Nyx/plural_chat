@@ -57,10 +57,16 @@ export interface AuditLog {
 
 // Auth API
 export const authAPI = {
-  // Legacy PluralKit login
+  // Legacy PluralKit login (deprecated - use setPKToken instead)
   login: async (pkToken: string) => {
     const response = await api.post<User>('/auth/login', { pk_token: pkToken });
     localStorage.setItem('pk_token', pkToken);
+    return response.data;
+  },
+
+  // Set PluralKit token for syncing (requires existing authentication)
+  setPKToken: async (pkToken: string) => {
+    const response = await api.post('/auth/set-pk-token', { pk_token: pkToken });
     return response.data;
   },
 
@@ -82,6 +88,16 @@ export const authAPI = {
 
 // Security API (username/password + 2FA)
 export const securityAPI = {
+  // Register new user
+  register: async (data: {
+    username: string;
+    password: string;
+    email?: string;
+  }): Promise<{ success: boolean; message: string }> => {
+    const response = await api.post('/security/register', data);
+    return response.data;
+  },
+
   // Login with username/password
   login: async (data: LoginRequest): Promise<LoginResponse> => {
     const response = await api.post<LoginResponse>('/security/login', data);

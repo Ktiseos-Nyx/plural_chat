@@ -5,15 +5,14 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Input, Button, Card, Alert, Tabs } from 'antd';
-import { LockOutlined, UserOutlined, LinkOutlined, SafetyOutlined } from '@ant-design/icons';
-import { authAPI, securityAPI } from '@/lib/api';
+import { Input, Button, Card, Alert } from 'antd';
+import { LockOutlined, UserOutlined, SafetyOutlined } from '@ant-design/icons';
+import { securityAPI } from '@/lib/api';
 import { useStore } from '@/lib/store';
 import Link from 'next/link';
+import { ThemeToggle } from '@/components/ui/theme-toggle';
 
 export default function LoginPage() {
-  const [activeTab, setActiveTab] = useState<string>('username');
-
   // Username/Password login state
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -21,9 +20,6 @@ export default function LoginPage() {
   const [backupCode, setBackupCode] = useState('');
   const [requires2FA, setRequires2FA] = useState(false);
   const [userId, setUserId] = useState<number | null>(null);
-
-  // PluralKit login state
-  const [pkToken, setPkToken] = useState('');
 
   // Common state
   const [loading, setLoading] = useState(false);
@@ -94,38 +90,20 @@ export default function LoginPage() {
     }
   };
 
-  // PluralKit login handler
-  const handlePKLogin = async () => {
-    if (!pkToken.trim()) {
-      setError('Please enter your PluralKit API token');
-      return;
-    }
-
-    setLoading(true);
-    setError('');
-
-    try {
-      const user = await authAPI.login(pkToken);
-      setUser(user);
-      router.push('/');
-    } catch (err: any) {
-      setError(err.response?.data?.detail || 'Authentication failed. Please check your token.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-50 to-blue-50 p-4">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-50 to-blue-50 dark:from-gray-900 dark:to-gray-800 p-4">
+      <div className="absolute top-4 right-4">
+        <ThemeToggle />
+      </div>
       <Card
         style={{ width: '100%', maxWidth: 500 }}
         className="shadow-lg"
       >
         <div className="text-center mb-6">
-          <h1 className="text-3xl font-bold text-gray-800 mb-2">
+          <h1 className="text-3xl font-bold mb-2">
             Plural Chat
           </h1>
-          <p className="text-gray-600">
+          <p className="text-muted-foreground">
             {requires2FA ? 'Two-Factor Authentication' : 'Sign in to continue'}
           </p>
         </div>
@@ -145,14 +123,14 @@ export default function LoginPage() {
           // 2FA verification screen
           <div className="space-y-4">
             <div className="text-center">
-              <SafetyOutlined className="text-4xl text-blue-500 mb-2" />
-              <p className="text-gray-700 mb-4">
+              <SafetyOutlined className="text-4xl text-primary mb-2" />
+              <p className="mb-4">
                 Enter your 6-digit code from your authenticator app, or use a backup code.
               </p>
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium mb-2">
                 Authenticator Code
               </label>
               <Input
@@ -169,10 +147,10 @@ export default function LoginPage() {
               />
             </div>
 
-            <div className="text-center text-gray-500 text-sm">OR</div>
+            <div className="text-center text-muted-foreground text-sm">OR</div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium mb-2">
                 Backup Code
               </label>
               <Input
@@ -214,116 +192,52 @@ export default function LoginPage() {
           </div>
         ) : (
           // Normal login screen
-          <Tabs
-            activeKey={activeTab}
-            onChange={setActiveTab}
-            items={[
-              {
-                key: 'username',
-                label: 'Username/Password',
-                children: (
-                  <div className="space-y-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Username
-                      </label>
-                      <Input
-                        size="large"
-                        prefix={<UserOutlined />}
-                        placeholder="Enter your username"
-                        value={username}
-                        onChange={(e) => setUsername(e.target.value)}
-                        onPressEnter={handleUsernameLogin}
-                      />
-                    </div>
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium mb-2">
+                Username
+              </label>
+              <Input
+                size="large"
+                prefix={<UserOutlined />}
+                placeholder="Enter your username"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                onPressEnter={handleUsernameLogin}
+              />
+            </div>
 
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Password
-                      </label>
-                      <Input.Password
-                        size="large"
-                        prefix={<LockOutlined />}
-                        placeholder="Enter your password"
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        onPressEnter={handleUsernameLogin}
-                      />
-                    </div>
+            <div>
+              <label className="block text-sm font-medium mb-2">
+                Password
+              </label>
+              <Input.Password
+                size="large"
+                prefix={<LockOutlined />}
+                placeholder="Enter your password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                onPressEnter={handleUsernameLogin}
+              />
+            </div>
 
-                    <Button
-                      type="primary"
-                      size="large"
-                      block
-                      loading={loading}
-                      onClick={handleUsernameLogin}
-                    >
-                      Sign In
-                    </Button>
+            <Button
+              type="primary"
+              size="large"
+              block
+              loading={loading}
+              onClick={handleUsernameLogin}
+            >
+              Sign In
+            </Button>
 
-                    <div className="text-center text-sm text-gray-600">
-                      Don't have an account?{' '}
-                      <Link href="/signup" className="text-blue-600 hover:underline">
-                        Sign up
-                      </Link>
-                    </div>
-                  </div>
-                ),
-              },
-              {
-                key: 'pluralkit',
-                label: 'PluralKit',
-                children: (
-                  <div className="space-y-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        PluralKit API Token
-                      </label>
-                      <Input.Password
-                        size="large"
-                        prefix={<LockOutlined />}
-                        placeholder="Enter your PluralKit API token"
-                        value={pkToken}
-                        onChange={(e) => setPkToken(e.target.value)}
-                        onPressEnter={handlePKLogin}
-                      />
-                    </div>
-
-                    <Button
-                      type="primary"
-                      size="large"
-                      block
-                      loading={loading}
-                      onClick={handlePKLogin}
-                    >
-                      Connect to PluralKit
-                    </Button>
-
-                    <div className="mt-6 p-4 bg-blue-50 rounded-lg">
-                      <h3 className="text-sm font-semibold text-blue-900 mb-2 flex items-center gap-2">
-                        <LinkOutlined /> How to get your token:
-                      </h3>
-                      <ol className="text-sm text-blue-800 space-y-1 list-decimal list-inside">
-                        <li>
-                          Visit{' '}
-                          <a
-                            href="https://pluralkit.me/dash"
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="underline font-medium"
-                          >
-                            pluralkit.me/dash
-                          </a>
-                        </li>
-                        <li>Click "Get API Token"</li>
-                        <li>Copy the token and paste it above</li>
-                      </ol>
-                    </div>
-                  </div>
-                ),
-              },
-            ]}
-          />
+            <div className="text-center text-sm">
+              Don't have an account?{' '}
+              <Link href="/signup" className="text-primary hover:underline font-medium">
+                Sign up
+              </Link>
+            </div>
+          </div>
         )}
       </Card>
     </div>
