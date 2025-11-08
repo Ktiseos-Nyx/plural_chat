@@ -38,7 +38,7 @@ if not exist "web\frontend\node_modules" (
 REM Start backend server
 echo Starting Backend (FastAPI) on http://localhost:8000...
 cd web\backend
-start "Plural Chat Backend" cmd /k "venv\Scripts\activate.bat && uvicorn app.main:app --reload --host 0.0.0.0 --port 8000"
+start "Plural Chat Backend" cmd /k "venv\Scripts\activate.bat && uvicorn main:app --reload --host 0.0.0.0 --port 8000"
 cd ..\..
 
 REM Wait a moment for backend to start

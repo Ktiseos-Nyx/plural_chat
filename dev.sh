@@ -50,7 +50,7 @@ if [ -f "venv/bin/activate" ]; then
 elif [ -f "venv/Scripts/activate" ]; then
     . venv/Scripts/activate
 fi
-uvicorn app.main:app --reload --host 0.0.0.0 --port 8000 &
+uvicorn main:app --reload --host 0.0.0.0 --port 8000 &
 BACKEND_PID=$!
 cd ../..
 
