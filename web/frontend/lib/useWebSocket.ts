@@ -5,12 +5,13 @@ import { useEffect, useRef } from 'react';
 import { io, Socket } from 'socket.io-client';
 import { useStore } from './store';
 import type { Message } from './store';
+import type { Channel } from './api';
 
 const WS_URL = process.env.NEXT_PUBLIC_WS_URL || 'http://localhost:8000';
 
 export function useWebSocket() {
   const socketRef = useRef<Socket | null>(null);
-  const { addMessage, setConnected } = useStore();
+  const { addMessage, setConnected, addChannel, updateChannel, deleteChannel } = useStore();
 
   useEffect(() => {
     const token = localStorage.getItem('pk_token');
@@ -50,11 +51,27 @@ export function useWebSocket() {
       // Could trigger a member refresh here
     });
 
+    // Channel events
+    socket.on('channel_created', (channel: Channel) => {
+      console.log('Channel created:', channel);
+      addChannel(channel);
+    });
+
+    socket.on('channel_updated', (channel: Channel) => {
+      console.log('Channel updated:', channel);
+      updateChannel(channel.id, channel);
+    });
+
+    socket.on('channel_deleted', (data: { id: number }) => {
+      console.log('Channel deleted:', data.id);
+      deleteChannel(data.id);
+    });
+
     // Cleanup on unmount
     return () => {
       socket.disconnect();
     };
-  }, [addMessage, setConnected]);
+  }, [addMessage, setConnected, addChannel, updateChannel, deleteChannel]);
 
   return {
     sendMessage: (content: string, memberId: number) => {

@@ -1,7 +1,7 @@
 """
 Channels API endpoints
 """
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 from typing import List
@@ -10,6 +10,7 @@ from datetime import datetime
 from ..database import get_db, Channel, Message, User
 from ..schemas import Channel as ChannelSchema, ChannelCreate, ChannelUpdate
 from ..auth import get_current_user
+from ..websocket import broadcast_to_user
 
 router = APIRouter(prefix="/channels", tags=["channels"])
 
@@ -97,6 +98,7 @@ async def get_channel(
 @router.post("/", response_model=ChannelSchema, status_code=status.HTTP_201_CREATED)
 async def create_channel(
     channel_data: ChannelCreate,
+    background_tasks: BackgroundTasks,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
@@ -137,8 +139,8 @@ async def create_channel(
     db.commit()
     db.refresh(new_channel)
 
-    # Return with message count
-    return {
+    # Prepare response
+    response = {
         "id": new_channel.id,
         "user_id": new_channel.user_id,
         "name": new_channel.name,
@@ -153,11 +155,22 @@ async def create_channel(
         "message_count": 0
     }
 
+    # Broadcast channel creation via WebSocket
+    background_tasks.add_task(
+        broadcast_to_user,
+        str(current_user.id),
+        "channel_created",
+        response
+    )
+
+    return response
+
 
 @router.patch("/{channel_id}", response_model=ChannelSchema)
 async def update_channel(
     channel_id: int,
     channel_data: ChannelUpdate,
+    background_tasks: BackgroundTasks,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
@@ -196,8 +209,8 @@ async def update_channel(
     db.commit()
     db.refresh(channel)
 
-    # Return with message count
-    return {
+    # Prepare response
+    response = {
         "id": channel.id,
         "user_id": channel.user_id,
         "name": channel.name,
@@ -214,11 +227,22 @@ async def update_channel(
         ).scalar()
     }
 
+    # Broadcast channel update via WebSocket
+    background_tasks.add_task(
+        broadcast_to_user,
+        str(current_user.id),
+        "channel_updated",
+        response
+    )
+
+    return response
+
 
 @router.delete("/{channel_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_channel(
     channel_id: int,
     delete_messages: bool = False,
+    background_tasks: BackgroundTasks = None,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
@@ -260,12 +284,22 @@ async def delete_channel(
     db.delete(channel)
     db.commit()
 
+    # Broadcast channel deletion via WebSocket
+    if background_tasks:
+        background_tasks.add_task(
+            broadcast_to_user,
+            str(current_user.id),
+            "channel_deleted",
+            {"id": channel_id}
+        )
+
     return None
 
 
 @router.post("/{channel_id}/archive", response_model=ChannelSchema)
 async def archive_channel(
     channel_id: int,
+    background_tasks: BackgroundTasks,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
@@ -287,7 +321,7 @@ async def archive_channel(
     db.commit()
     db.refresh(channel)
 
-    return {
+    response = {
         "id": channel.id,
         "user_id": channel.user_id,
         "name": channel.name,
@@ -304,10 +338,21 @@ async def archive_channel(
         ).scalar()
     }
 
+    # Broadcast channel archive via WebSocket
+    background_tasks.add_task(
+        broadcast_to_user,
+        str(current_user.id),
+        "channel_updated",
+        response
+    )
+
+    return response
+
 
 @router.post("/{channel_id}/unarchive", response_model=ChannelSchema)
 async def unarchive_channel(
     channel_id: int,
+    background_tasks: BackgroundTasks,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
@@ -329,7 +374,7 @@ async def unarchive_channel(
     db.commit()
     db.refresh(channel)
 
-    return {
+    response = {
         "id": channel.id,
         "user_id": channel.user_id,
         "name": channel.name,
@@ -345,6 +390,16 @@ async def unarchive_channel(
             Message.channel_id == channel.id
         ).scalar()
     }
+
+    # Broadcast channel unarchive via WebSocket
+    background_tasks.add_task(
+        broadcast_to_user,
+        str(current_user.id),
+        "channel_updated",
+        response
+    )
+
+    return response
 
 
 @router.post("/reorder", response_model=List[ChannelSchema])

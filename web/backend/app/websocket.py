@@ -235,3 +235,13 @@ async def member_update(sid, data):
 
     except Exception as e:
         logger.error(f"Member update error: {e}")
+
+
+# Helper function to broadcast to user's sessions
+async def broadcast_to_user(user_id: str, event: str, data: dict):
+    """Broadcast an event to all sessions of a user"""
+    sessions = connection_manager.get_user_sessions(user_id)
+    for session_id in sessions:
+        await sio_app.emit(event, data, room=session_id)
+    logger.info(f"Broadcasted {event} to {len(sessions)} sessions of user {user_id}")
+
