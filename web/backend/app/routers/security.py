@@ -315,8 +315,8 @@ async def login_with_2fa(
     user.last_login = datetime.utcnow()
     db.commit()
 
-    # Create access token
-    access_token = create_access_token(data={"sub": user.id})
+    # Create access token (JWT spec requires 'sub' to be a string)
+    access_token = create_access_token(data={"sub": str(user.id)})
 
     # Log successful login
     audit_logger.log_login_success(
