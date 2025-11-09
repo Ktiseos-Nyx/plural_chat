@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { Menu, Settings, LogOut, Hash } from "lucide-react"
+import { Menu, Settings, LogOut, Hash, Users } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { ChatList } from "@/components/ui/chat-list"
 import { ChatInput } from "@/components/ui/chat-input"
@@ -26,6 +26,7 @@ interface ChatInterfaceProps {
   onAddChannel?: () => void
   onEditChannel?: (channel: Channel) => void
   onSettings?: () => void
+  onMembers?: () => void
   onLogout?: () => void
   sidebarOpen?: boolean
   onToggleSidebar?: () => void
@@ -45,6 +46,7 @@ export function ChatInterface({
   onAddChannel,
   onEditChannel,
   onSettings,
+  onMembers,
   onLogout,
   sidebarOpen = true,
   onToggleSidebar,
@@ -112,6 +114,12 @@ export function ChatInterface({
           </div>
 
           <div className="flex items-center gap-2">
+            {onMembers && (
+              <Button onClick={onMembers} size="icon" variant="ghost">
+                <Users className="h-5 w-5" />
+                <span className="sr-only">Members</span>
+              </Button>
+            )}
             {onSettings && (
               <Button onClick={onSettings} size="icon" variant="ghost">
                 <Settings className="h-5 w-5" />

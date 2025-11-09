@@ -9,7 +9,7 @@ import { Card, Tabs, Input, Button, Form, message, Alert, Upload } from 'antd';
 import { UserOutlined, LockOutlined, SafetyOutlined, HistoryOutlined, LinkOutlined, SyncOutlined, BgColorsOutlined, CameraOutlined } from '@ant-design/icons';
 import Link from 'next/link';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
-import { authAPI, securityAPI, membersAPI, type Member } from '@/lib/api';
+import { authAPI, securityAPI } from '@/lib/api';
 import { useStore } from '@/lib/store';
 
 export default function SettingsPage() {
@@ -18,9 +18,6 @@ export default function SettingsPage() {
   const [activeTab, setActiveTab] = useState<string>('profile');
   const [loading, setLoading] = useState(false);
 
-  // Members state
-  const [members, setMembers] = useState<Member[]>([]);
-  const [membersLoading, setMembersLoading] = useState(false);
 
   // PluralKit sync state
   const [pkToken, setPkToken] = useState('');
@@ -43,51 +40,8 @@ export default function SettingsPage() {
       if (user.avatar_path) {
         setAvatarPreview(`http://localhost:8000${user.avatar_path}`);
       }
-      loadMembers();
     }
   }, [user, router]);
-
-  const loadMembers = async () => {
-    setMembersLoading(true);
-    try {
-      const data = await membersAPI.getAll();
-      setMembers(data);
-    } catch (error) {
-      console.error('Failed to load members:', error);
-    } finally {
-      setMembersLoading(false);
-    }
-  };
-
-  const handleAddMember = async (values: any) => {
-    setMembersLoading(true);
-    try {
-      await membersAPI.create({
-        name: values.name,
-        pronouns: values.pronouns,
-        color: values.color || '#6c757d',
-      });
-      message.success('Member added successfully');
-      await loadMembers();
-    } catch (error: any) {
-      message.error(error.response?.data?.detail || 'Failed to add member');
-    } finally {
-      setMembersLoading(false);
-    }
-  };
-
-  const handleDeleteMember = async (memberId: number) => {
-    setMembersLoading(true);
-    try {
-      await membersAPI.delete(memberId);
-      message.success('Member deleted successfully');
-      await loadMembers();
-    } catch (error: any) {
-      message.error(error.response?.data?.detail || 'Failed to delete member');
-    } finally {
-      setMembersLoading(false);
-    }
-  };
 
   const handleProfileUpdate = async (values: any) => {
     setLoading(true);
@@ -354,77 +308,6 @@ export default function SettingsPage() {
                         <Form.Item>
                           <Button type="primary" htmlType="submit" loading={loading} size="large">
                             Change Password
-                          </Button>
-                        </Form.Item>
-                      </Form>
-                    </div>
-
-                    <div className="border-t pt-6">
-                      <h2 className="text-xl font-semibold mb-4">Members</h2>
-                      <Alert
-                        message="Manage Your Members (Optional)"
-                        description="Members are optional! Chat as yourself by default. Create members to switch between different personas, characters, or system members. Perfect for plural systems or roleplay."
-                        type="info"
-                        showIcon
-                        className="mb-4"
-                      />
-
-                      {/* Members List */}
-                      <div className="space-y-2 mb-4">
-                        {membersLoading && <p className="text-gray-500">Loading members...</p>}
-                        {!membersLoading && members.length === 0 && (
-                          <p className="text-gray-500">No members yet. Add one below!</p>
-                        )}
-                        {!membersLoading && members.map((member) => (
-                          <Card key={member.id} className="bg-gray-50">
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center gap-3">
-                                <div
-                                  className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold"
-                                  style={{ backgroundColor: member.color || '#6c757d' }}
-                                >
-                                  {member.name.charAt(0).toUpperCase()}
-                                </div>
-                                <div>
-                                  <h4 className="font-semibold">{member.name}</h4>
-                                  {member.pronouns && (
-                                    <p className="text-sm text-gray-600">{member.pronouns}</p>
-                                  )}
-                                </div>
-                              </div>
-                              <Button
-                                danger
-                                onClick={() => {
-                                  if (confirm(`Delete member "${member.name}"?`)) {
-                                    handleDeleteMember(member.id);
-                                  }
-                                }}
-                                disabled={membersLoading}
-                              >
-                                Delete
-                              </Button>
-                            </div>
-                          </Card>
-                        ))}
-                      </div>
-
-                      {/* Add Member Form */}
-                      <Form layout="inline" onFinish={handleAddMember}>
-                        <Form.Item
-                          name="name"
-                          rules={[{ required: true, message: 'Name required' }]}
-                        >
-                          <Input placeholder="Member name" size="large" />
-                        </Form.Item>
-                        <Form.Item name="pronouns">
-                          <Input placeholder="Pronouns (optional)" size="large" />
-                        </Form.Item>
-                        <Form.Item name="color">
-                          <Input type="color" size="large" defaultValue="#6c757d" />
-                        </Form.Item>
-                        <Form.Item>
-                          <Button type="primary" htmlType="submit" loading={membersLoading} size="large">
-                            Add Member
                           </Button>
                         </Form.Item>
                       </Form>
