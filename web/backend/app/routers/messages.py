@@ -15,7 +15,7 @@ import re
 from ..database import get_db
 from .. import models, schemas
 from ..auth_enhanced import get_current_user
-from ..websocket import broadcast_to_user
+from ..websocket import broadcast_to_user, broadcast_to_all
 
 router = APIRouter()
 
@@ -90,11 +90,12 @@ async def get_messages(
     current_user: models.User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """Get recent messages from the chat, optionally filtered by channel"""
-    # Get messages for this user (with or without member)
-    query = db.query(models.Message).filter(
-        models.Message.user_id == current_user.id
-    )
+    """Get recent messages from the chat, optionally filtered by channel
+
+    Returns messages from all users in the channel (multi-user chat).
+    """
+    # Build query - no user_id filter for multi-user chat
+    query = db.query(models.Message)
 
     # Filter by channel if specified
     if channel_id is not None:
@@ -208,9 +209,9 @@ async def send_message(
             "created_at": new_message.member.created_at.isoformat()
         }
 
+    # Broadcast to ALL users (multi-user chat)
     background_tasks.add_task(
-        broadcast_to_user,
-        str(current_user.id),
+        broadcast_to_all,
         "message",
         ws_payload
     )
@@ -263,11 +264,14 @@ async def export_messages(
             detail="Format must be json, csv, or txt"
         )
 
-    # Build query
+    # Build query - export all messages (multi-user chat)
     query = db.query(models.Message).filter(
-        models.Message.user_id == current_user.id,
         models.Message.is_deleted == False
     )
+
+    # Optional: filter by channel if needed
+    # if channel_id:
+    #     query = query.filter(models.Message.channel_id == channel_id)
 
     # Apply date filters
     if start_date:

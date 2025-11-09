@@ -279,3 +279,13 @@ async def broadcast_to_user(user_id: str, event: str, data: dict):
         await sio_app.emit(event, data, room=session_id)
     logger.info(f"Broadcasted {event} to {len(sessions)} sessions of user {user_id}")
 
+
+async def broadcast_to_all(event: str, data: dict):
+    """Broadcast an event to all connected users (multi-user chat)"""
+    total_sessions = 0
+    for user_id, sessions in connection_manager.active_connections.items():
+        for session_id in sessions:
+            await sio_app.emit(event, data, room=session_id)
+            total_sessions += 1
+    logger.info(f"Broadcasted {event} to {total_sessions} sessions across all users")
+

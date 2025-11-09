@@ -22,10 +22,10 @@ async def list_channels(
     db: Session = Depends(get_db)
 ):
     """
-    Get all channels for the current user.
+    Get all channels (shared across all users).
     Returns channels ordered by position.
     """
-    query = db.query(Channel).filter(Channel.user_id == current_user.id)
+    query = db.query(Channel)
 
     if not include_archived:
         query = query.filter(Channel.is_archived == False)
@@ -63,10 +63,7 @@ async def get_channel(
     db: Session = Depends(get_db)
 ):
     """Get a specific channel by ID."""
-    channel = db.query(Channel).filter(
-        Channel.id == channel_id,
-        Channel.user_id == current_user.id
-    ).first()
+    channel = db.query(Channel).filter(Channel.id == channel_id).first()
 
     if not channel:
         raise HTTPException(
@@ -104,11 +101,10 @@ async def create_channel(
 ):
     """
     Create a new channel.
-    Channel names must be unique per user.
+    Channel names must be globally unique.
     """
-    # Check if channel name already exists for this user
+    # Check if channel name already exists globally
     existing = db.query(Channel).filter(
-        Channel.user_id == current_user.id,
         Channel.name == channel_data.name
     ).first()
 
@@ -119,9 +115,7 @@ async def create_channel(
         )
 
     # Get the highest position to place new channel at the end
-    max_position = db.query(func.max(Channel.position)).filter(
-        Channel.user_id == current_user.id
-    ).scalar() or -1
+    max_position = db.query(func.max(Channel.position)).scalar() or -1
 
     # Create channel
     new_channel = Channel(
