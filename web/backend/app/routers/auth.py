@@ -1,7 +1,7 @@
 """
 Authentication router with PluralKit integration
 """
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks
 from sqlalchemy.orm import Session
 from typing import Dict, Any
 import requests
@@ -74,12 +74,17 @@ async def verify_token(current_user: models.User = Depends(get_current_user)):
 
 @router.post("/sync-pluralkit")
 async def sync_from_pluralkit(
+    background_tasks: BackgroundTasks,
     current_user: models.User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """
-    Sync members from PluralKit
+    Sync members from PluralKit (with real-time progress via WebSocket)
     Downloads avatars and updates member data
+
+    Progress updates are sent via WebSocket events:
+    - 'sync_progress': { current: int, total: int, status: str }
+    - 'sync_complete': { added: int, updated: int, errors: [] }
 
     NOTE: You must set your PluralKit token first using /auth/set-pk-token
     """
@@ -90,22 +95,61 @@ async def sync_from_pluralkit(
             detail="No PluralKit token set. Use /auth/set-pk-token first."
         )
 
+    # Start sync in background and return immediately
+    background_tasks.add_task(
+        _sync_pluralkit_background,
+        current_user.id,
+        pk_token
+    )
+
+    return {
+        "success": True,
+        "message": "Sync started. Listen for 'sync_progress' and 'sync_complete' WebSocket events."
+    }
+
+
+async def _sync_pluralkit_background(user_id: int, pk_token: str):
+    """Background task for PluralKit sync with progress updates"""
+    from ..database import SessionLocal
+    from ..websocket import broadcast_to_user
+
+    db = SessionLocal()
     pk_api = PluralKitAPI(pk_token)
 
     try:
         # Get members from PK
         pk_members = pk_api.get_members()
         if not pk_members:
-            return {"success": False, "message": "No members found"}
+            await broadcast_to_user(
+                str(user_id),
+                "sync_complete",
+                {"success": False, "message": "No members found", "added": 0, "updated": 0, "errors": []}
+            )
+            return
 
+        total = len(pk_members)
         added = 0
         updated = 0
         errors = []
 
-        for pk_member in pk_members:
+        # Send initial progress
+        await broadcast_to_user(
+            str(user_id),
+            "sync_progress",
+            {"current": 0, "total": total, "status": f"Starting sync of {total} members..."}
+        )
+
+        for idx, pk_member in enumerate(pk_members, 1):
             try:
                 pk_id = pk_member.get("id")
                 name = pk_member.get("name", "Unknown")
+
+                # Send progress update
+                await broadcast_to_user(
+                    str(user_id),
+                    "sync_progress",
+                    {"current": idx, "total": total, "status": f"Syncing {name}... ({idx}/{total})"}
+                )
 
                 # Convert proxy tags to JSON string
                 import json
@@ -154,22 +198,40 @@ async def sync_from_pluralkit(
 
         # Update last_sync timestamp
         from datetime import datetime
-        current_user.last_sync = datetime.utcnow()
-        db.commit()
+        user = db.query(models.User).filter(models.User.id == user_id).first()
+        if user:
+            user.last_sync = datetime.utcnow()
+            db.commit()
 
-        return {
-            "success": True,
-            "added": added,
-            "updated": updated,
-            "errors": errors
-        }
+        # Send completion event
+        await broadcast_to_user(
+            str(user_id),
+            "sync_complete",
+            {
+                "success": True,
+                "added": added,
+                "updated": updated,
+                "errors": errors,
+                "message": f"Sync complete! Added {added}, updated {updated} members."
+            }
+        )
 
     except Exception as e:
         logger.error(f"Sync error: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Sync failed: {str(e)}"
+        # Send error event
+        await broadcast_to_user(
+            str(user_id),
+            "sync_complete",
+            {
+                "success": False,
+                "added": 0,
+                "updated": 0,
+                "errors": [str(e)],
+                "message": f"Sync failed: {str(e)}"
+            }
         )
+    finally:
+        db.close()
 
 
 @router.post("/logout")
