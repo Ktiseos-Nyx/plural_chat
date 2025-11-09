@@ -49,18 +49,25 @@ async def send_message(
     current_user: models.User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """Send a new message"""
-    # Verify member belongs to current user
-    member = db.query(models.Member).filter(
-        models.Member.id == message.member_id,
-        models.Member.user_id == current_user.id
-    ).first()
+    """
+    Send a new message
 
-    if not member:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Member not found"
-        )
+    Messages can be sent either:
+    - As the user directly (member_id = None) - default for regular chat
+    - As a member (member_id provided) - for plural users or roleplay
+    """
+    # Verify member belongs to current user (if member_id provided)
+    if message.member_id is not None:
+        member = db.query(models.Member).filter(
+            models.Member.id == message.member_id,
+            models.Member.user_id == current_user.id
+        ).first()
+
+        if not member:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Member not found"
+            )
 
     # Verify channel if specified
     if message.channel_id is not None:
@@ -77,6 +84,7 @@ async def send_message(
 
     # Create message
     new_message = models.Message(
+        user_id=current_user.id,
         member_id=message.member_id,
         channel_id=message.channel_id,
         content=message.content
@@ -85,33 +93,46 @@ async def send_message(
     db.commit()
     db.refresh(new_message)
 
-    # Load member relationship for response
-    db.refresh(new_message, ['member'])
+    # Load relationships for response
+    db.refresh(new_message, ['user', 'member'])
 
     # Broadcast message to all user's sessions via WebSocket
+    ws_payload = {
+        "id": new_message.id,
+        "user_id": new_message.user_id,
+        "member_id": new_message.member_id,
+        "channel_id": new_message.channel_id,
+        "content": new_message.content,
+        "timestamp": new_message.timestamp.isoformat(),
+        "user": {
+            "id": current_user.id,
+            "username": current_user.username,
+            "email": current_user.email,
+            "theme_color": current_user.theme_color,
+            "avatar_path": current_user.avatar_path,
+        }
+    }
+
+    # Add member data if message was sent as a member
+    if new_message.member:
+        ws_payload["member"] = {
+            "id": new_message.member.id,
+            "user_id": new_message.member.user_id,
+            "name": new_message.member.name,
+            "pronouns": new_message.member.pronouns,
+            "color": new_message.member.color,
+            "avatar_path": new_message.member.avatar_path,
+            "description": new_message.member.description,
+            "pk_id": new_message.member.pk_id,
+            "proxy_tags": new_message.member.proxy_tags,
+            "created_at": new_message.member.created_at.isoformat()
+        }
+
     background_tasks.add_task(
         broadcast_to_user,
         str(current_user.id),
         "message",
-        {
-            "id": new_message.id,
-            "member_id": new_message.member_id,
-            "channel_id": new_message.channel_id,
-            "content": new_message.content,
-            "timestamp": new_message.timestamp.isoformat(),
-            "member": {
-                "id": new_message.member.id,
-                "user_id": new_message.member.user_id,
-                "name": new_message.member.name,
-                "pronouns": new_message.member.pronouns,
-                "color": new_message.member.color,
-                "avatar_path": new_message.member.avatar_path,
-                "description": new_message.member.description,
-                "pk_id": new_message.member.pk_id,
-                "proxy_tags": new_message.member.proxy_tags,
-                "created_at": new_message.member.created_at.isoformat()
-            }
-        }
+        ws_payload
     )
 
     return new_message

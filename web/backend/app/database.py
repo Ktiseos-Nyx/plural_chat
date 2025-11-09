@@ -79,6 +79,7 @@ class User(Base):
     # Relationships
     members = relationship("Member", back_populates="user", cascade="all, delete-orphan")
     channels = relationship("Channel", back_populates="user", cascade="all, delete-orphan")
+    messages = relationship("Message", back_populates="user", cascade="all, delete-orphan")
     audit_logs = relationship("AuditLog", back_populates="user", cascade="all, delete-orphan")
 
     def set_pk_token(self, token: str):
@@ -185,7 +186,8 @@ class Message(Base):
     __tablename__ = "messages"
 
     id = Column(Integer, primary_key=True, index=True)
-    member_id = Column(Integer, ForeignKey("members.id"), nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    member_id = Column(Integer, ForeignKey("members.id"), nullable=True)  # Optional - only if sent as a member
     channel_id = Column(Integer, ForeignKey("channels.id"), nullable=True, index=True)
     content = Column(Text, nullable=False)
     timestamp = Column(DateTime, default=datetime.utcnow, index=True)
@@ -193,6 +195,7 @@ class Message(Base):
     is_deleted = Column(Boolean, default=False)
 
     # Relationships
+    user = relationship("User", back_populates="messages")
     member = relationship("Member", back_populates="messages")
     channel = relationship("Channel", back_populates="messages")
 

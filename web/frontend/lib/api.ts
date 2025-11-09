@@ -278,12 +278,12 @@ export const messagesAPI = {
     return response.data;
   },
 
-  create: async (data: { member_id: number; content: string; channel_id?: number }) => {
+  create: async (data: { member_id?: number; content: string; channel_id?: number }) => {
     const response = await api.post<Message>('/messages', data);
     return response.data;
   },
 
-  send: async (memberId: number, content: string, channelId?: number) => {
+  send: async (memberId: number | undefined, content: string, channelId?: number) => {
     const response = await api.post<Message>('/messages', {
       member_id: memberId,
       content,

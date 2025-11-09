@@ -56,11 +56,6 @@ export default function HomePage() {
         setMembers(membersData);
         setChannels(channelsData);
 
-        // Auto-select first member if not already selected (so users can chat immediately)
-        if (!selectedMember && membersData.length > 0) {
-          setSelectedMember(membersData[0]);
-        }
-
         // Select default channel if not already selected
         if (!selectedChannel && channelsData.length > 0) {
           const defaultChannel = channelsData.find(ch => ch.is_default) || channelsData[0];
@@ -74,7 +69,7 @@ export default function HomePage() {
     };
 
     loadData();
-  }, [user, router, setMembers, setChannels, selectedChannel, setSelectedChannel, selectedMember, setSelectedMember]);
+  }, [user, router, setMembers, setChannels, selectedChannel, setSelectedChannel]);
 
   // Load messages when channel changes
   useEffect(() => {
@@ -96,11 +91,11 @@ export default function HomePage() {
   }, [selectedChannel, setMessages]);
 
   const handleSendMessage = async (content: string) => {
-    if (!selectedMember || !selectedChannel) return;
+    if (!selectedChannel) return;
 
     try {
       const message = await messagesAPI.create({
-        member_id: selectedMember.id,
+        member_id: selectedMember?.id || undefined,  // Optional - send as member if selected, otherwise as user
         channel_id: selectedChannel.id,
         content,
       });

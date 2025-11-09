@@ -184,16 +184,6 @@ async def register_user(
     db.commit()
     db.refresh(new_user)
 
-    # Create a default member so the user can chat immediately
-    default_member = models.Member(
-        user_id=new_user.id,
-        name=register_request.username,
-        color="#6c757d",  # Default gray color
-        is_active=True
-    )
-    db.add(default_member)
-    db.commit()
-
     # Log registration
     audit_logger.log(
         db=db,

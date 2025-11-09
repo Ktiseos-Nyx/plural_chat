@@ -362,8 +362,8 @@ export default function SettingsPage() {
                     <div className="border-t pt-6">
                       <h2 className="text-xl font-semibold mb-4">Members</h2>
                       <Alert
-                        message="Manage Your Members"
-                        description="Create and manage members/personas. You can switch between them when chatting. A default member with your username was created automatically."
+                        message="Manage Your Members (Optional)"
+                        description="Members are optional! Chat as yourself by default. Create members to switch between different personas, characters, or system members. Perfect for plural systems or roleplay."
                         type="info"
                         showIcon
                         className="mb-4"

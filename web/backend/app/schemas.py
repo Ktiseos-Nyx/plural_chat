@@ -95,14 +95,16 @@ class MessageBase(BaseModel):
     content: str
 
 class MessageCreate(MessageBase):
-    member_id: int
+    member_id: Optional[int] = None  # Optional - send as member if provided, otherwise as user
     channel_id: Optional[int] = None
 
 class Message(MessageBase):
     id: int
-    member_id: int
+    user_id: int
+    member_id: Optional[int] = None
     channel_id: Optional[int] = None
-    member: Member
+    user: UserBase  # The actual user who sent the message
+    member: Optional[Member] = None  # Optional - only if sent as a member
     timestamp: datetime
 
     class Config:

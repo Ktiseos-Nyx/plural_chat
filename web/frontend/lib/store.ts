@@ -18,9 +18,11 @@ export interface Member {
 
 export interface Message {
   id: number;
-  member_id: number;
+  user_id: number;
+  member_id?: number;
   channel_id?: number;
-  member: Member;
+  user: User;
+  member?: Member;
   content: string;
   timestamp: string;
 }
