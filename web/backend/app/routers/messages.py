@@ -13,7 +13,7 @@ import io
 
 from ..database import get_db
 from .. import models, schemas
-from ..auth import get_current_user
+from ..auth_enhanced import get_current_user
 from ..websocket import broadcast_to_user
 
 router = APIRouter()
@@ -27,9 +27,9 @@ async def get_messages(
     db: Session = Depends(get_db)
 ):
     """Get recent messages from the chat, optionally filtered by channel"""
-    # Get messages from all members of this user's system
-    query = db.query(models.Message).join(models.Member).filter(
-        models.Member.user_id == current_user.id
+    # Get messages for this user (with or without member)
+    query = db.query(models.Message).filter(
+        models.Message.user_id == current_user.id
     )
 
     # Filter by channel if specified
@@ -145,9 +145,9 @@ async def delete_message(
     db: Session = Depends(get_db)
 ):
     """Delete a message"""
-    message = db.query(models.Message).join(models.Member).filter(
+    message = db.query(models.Message).filter(
         models.Message.id == message_id,
-        models.Member.user_id == current_user.id
+        models.Message.user_id == current_user.id
     ).first()
 
     if not message:
@@ -184,8 +184,8 @@ async def export_messages(
         )
 
     # Build query
-    query = db.query(models.Message).join(models.Member).filter(
-        models.Member.user_id == current_user.id,
+    query = db.query(models.Message).filter(
+        models.Message.user_id == current_user.id,
         models.Message.is_deleted == False
     )
 
@@ -235,12 +235,16 @@ def _export_json(messages, filename):
             {
                 "id": msg.id,
                 "timestamp": msg.timestamp.isoformat(),
+                "user": {
+                    "id": msg.user.id,
+                    "username": msg.user.username,
+                },
                 "member": {
                     "id": msg.member.id,
                     "name": msg.member.name,
                     "pronouns": msg.member.pronouns,
                     "color": msg.member.color
-                },
+                } if msg.member else None,
                 "content": msg.content,
                 "edited_at": msg.edited_at.isoformat() if msg.edited_at else None
             }
@@ -263,14 +267,15 @@ def _export_csv(messages, filename):
     writer = csv.writer(output)
 
     # Header
-    writer.writerow(["Timestamp", "Member", "Pronouns", "Message", "Edited"])
+    writer.writerow(["Timestamp", "User", "Member", "Pronouns", "Message", "Edited"])
 
     # Data
     for msg in messages:
         writer.writerow([
             msg.timestamp.strftime("%Y-%m-%d %H:%M:%S"),
-            msg.member.name,
-            msg.member.pronouns or "",
+            msg.user.username,
+            msg.member.name if msg.member else "",
+            msg.member.pronouns if msg.member else "",
             msg.content,
             "Yes" if msg.edited_at else "No"
         ])
@@ -297,9 +302,14 @@ def _export_txt(messages, filename):
 
     for msg in messages:
         timestamp = msg.timestamp.strftime("%Y-%m-%d %H:%M:%S")
-        member_info = f"{msg.member.name}"
-        if msg.member.pronouns:
-            member_info += f" ({msg.member.pronouns})"
+
+        # Show member name if message was sent as a member, otherwise show username
+        if msg.member:
+            member_info = f"{msg.member.name}"
+            if msg.member.pronouns:
+                member_info += f" ({msg.member.pronouns})"
+        else:
+            member_info = f"{msg.user.username}"
 
         lines.append(f"[{timestamp}] {member_info}:")
         lines.append(f"  {msg.content}")
