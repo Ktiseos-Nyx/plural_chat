@@ -134,16 +134,7 @@ export function ChatInterface({
         />
       </div>
 
-      {/* Member Sidebar - Right side (informational only) */}
-      {sidebarOpen && (
-        <div className="w-64 flex-shrink-0">
-          <MemberSidebar
-            members={members}
-            selectedMember={selectedMember}
-            onSelectMember={onSelectMember}
-          />
-        </div>
-      )}
+      {/* TODO: Right sidebar for logged-in users */}
     </div>
   )
 }
