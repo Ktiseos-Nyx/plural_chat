@@ -47,65 +47,69 @@ export function ChannelSidebar({
     const emoji = channel.emoji || "💬"
 
     return (
-      <TooltipProvider key={channel.id}>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <button
-              onClick={() => onSelectChannel(channel)}
-              className={cn(
-                "w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-sm",
-                "hover:bg-accent transition-colors text-left group",
-                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                isSelected && "bg-accent font-medium"
-              )}
-              style={
-                isSelected
-                  ? { borderLeft: `3px solid ${channelColor}` }
-                  : undefined
-              }
-            >
-              <span className="text-base flex-shrink-0">{emoji}</span>
-              <span
-                className="flex-1 truncate"
-                style={isSelected ? { color: channelColor } : undefined}
+      <div
+        key={channel.id}
+        className={cn(
+          "w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-sm group",
+          "hover:bg-accent transition-colors",
+          isSelected && "bg-accent font-medium"
+        )}
+        style={
+          isSelected
+            ? { borderLeft: `3px solid ${channelColor}` }
+            : undefined
+        }
+      >
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                onClick={() => onSelectChannel(channel)}
+                className="flex items-center gap-2 flex-1 min-w-0 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded"
               >
-                {channel.name}
-              </span>
-              {channel.message_count !== undefined && channel.message_count > 0 && (
-                <span className="text-xs text-muted-foreground">
-                  {channel.message_count}
-                </span>
-              )}
-              {onEditChannel && (
-                <Button
-                  size="icon"
-                  variant="ghost"
-                  className="h-6 w-6 opacity-0 group-hover:opacity-100"
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    onEditChannel(channel)
-                  }}
+                <span className="text-base flex-shrink-0">{emoji}</span>
+                <span
+                  className="flex-1 truncate"
+                  style={isSelected ? { color: channelColor } : undefined}
                 >
-                  <Settings className="h-3 w-3" />
-                </Button>
-              )}
-            </button>
-          </TooltipTrigger>
-          <TooltipContent side="right">
-            <div className="space-y-1">
-              <p className="font-semibold">{emoji} {channel.name}</p>
-              {channel.description && (
-                <p className="text-xs">{channel.description}</p>
-              )}
-              {channel.message_count !== undefined && (
-                <p className="text-xs text-muted-foreground">
-                  {channel.message_count} {channel.message_count === 1 ? "message" : "messages"}
-                </p>
-              )}
-            </div>
-          </TooltipContent>
-        </Tooltip>
-      </TooltipProvider>
+                  {channel.name}
+                </span>
+                {channel.message_count !== undefined && channel.message_count > 0 && (
+                  <span className="text-xs text-muted-foreground">
+                    {channel.message_count}
+                  </span>
+                )}
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="right">
+              <div className="space-y-1">
+                <p className="font-semibold">{emoji} {channel.name}</p>
+                {channel.description && (
+                  <p className="text-xs">{channel.description}</p>
+                )}
+                {channel.message_count !== undefined && (
+                  <p className="text-xs text-muted-foreground">
+                    {channel.message_count} {channel.message_count === 1 ? "message" : "messages"}
+                  </p>
+                )}
+              </div>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+        {onEditChannel && (
+          <Button
+            size="icon"
+            variant="ghost"
+            className="h-6 w-6 opacity-0 group-hover:opacity-100 flex-shrink-0"
+            onClick={(e) => {
+              e.stopPropagation()
+              onEditChannel(channel)
+            }}
+          >
+            <Settings className="h-3 w-3" />
+          </Button>
+        )}
+      </div>
     )
   }
 
