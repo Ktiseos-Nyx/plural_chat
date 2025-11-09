@@ -18,6 +18,54 @@ from app.websocket import sio_app, connection_manager
 async def lifespan(app: FastAPI):
     """Initialize database on startup"""
     Base.metadata.create_all(bind=engine)
+
+    # Create default admin user if no users exist
+    from app.database import SessionLocal, User, Channel
+    from app.auth_enhanced import get_password_hash
+
+    db = SessionLocal()
+    try:
+        user_count = db.query(User).count()
+        if user_count == 0:
+            # Create default admin user
+            admin_user = User(
+                username="admin",
+                hashed_password=get_password_hash("admin123"),
+                email="admin@plural.chat",
+                is_active=True,
+                is_verified=True
+            )
+            db.add(admin_user)
+            db.commit()
+            db.refresh(admin_user)
+
+            # Create default "general" channel
+            default_channel = Channel(
+                user_id=admin_user.id,
+                name="general",
+                description="General discussion",
+                emoji="💬",
+                is_default=True,
+                is_archived=False,
+                position=0,
+                color="#8b5cf6"
+            )
+            db.add(default_channel)
+            db.commit()
+
+            print("=" * 60)
+            print("🎉 DEFAULT ADMIN USER CREATED!")
+            print("=" * 60)
+            print("Username: admin")
+            print("Password: admin123")
+            print("Email:    admin@plural.chat")
+            print()
+            print("⚠️  CHANGE THIS PASSWORD IMMEDIATELY!")
+            print("Access admin panel at: http://localhost:8000/admin/dashboard")
+            print("=" * 60)
+    finally:
+        db.close()
+
     yield
 
 # Create FastAPI app
