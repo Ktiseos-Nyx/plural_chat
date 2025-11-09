@@ -5,11 +5,12 @@ from fastapi import APIRouter, Depends, HTTPException, status, Query, Background
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 from sqlalchemy import desc, and_
-from typing import List, Optional
+from typing import List, Optional, Tuple
 from datetime import datetime
 import json
 import csv
 import io
+import re
 
 from ..database import get_db
 from .. import models, schemas
@@ -17,6 +18,69 @@ from ..auth_enhanced import get_current_user
 from ..websocket import broadcast_to_user
 
 router = APIRouter()
+
+
+def parse_proxy_tags(content: str, members: List[models.Member]) -> Tuple[Optional[int], str]:
+    """
+    Parse message content for proxy tags and return (member_id, stripped_content).
+
+    PluralKit-style proxy tag format:
+    - Stored as JSON array: [{"prefix": "text:", "suffix": ""}, {"prefix": "[", "suffix": "]"}]
+    - Message format: "prefix content suffix"
+
+    Returns:
+        Tuple of (member_id or None, content with tags stripped)
+    """
+    for member in members:
+        if not member.proxy_tags:
+            continue
+
+        try:
+            proxy_tags_list = json.loads(member.proxy_tags)
+            if not isinstance(proxy_tags_list, list):
+                continue
+
+            for tag_set in proxy_tags_list:
+                if not isinstance(tag_set, dict):
+                    continue
+
+                prefix = tag_set.get("prefix", "")
+                suffix = tag_set.get("suffix", "")
+
+                # Skip empty tag sets
+                if not prefix and not suffix:
+                    continue
+
+                # Check if message matches this proxy tag pattern
+                matches = False
+                stripped_content = content
+
+                if prefix and suffix:
+                    # Both prefix and suffix - e.g., "[text]"
+                    if content.startswith(prefix) and content.endswith(suffix):
+                        stripped_content = content[len(prefix):-len(suffix)].strip()
+                        matches = True
+                elif prefix:
+                    # Only prefix - e.g., "text: message"
+                    if content.startswith(prefix):
+                        stripped_content = content[len(prefix):].strip()
+                        matches = True
+                elif suffix:
+                    # Only suffix - e.g., "message -text"
+                    if content.endswith(suffix):
+                        stripped_content = content[:-len(suffix)].strip()
+                        matches = True
+
+                # If we found a match and there's content left, return this member
+                if matches and stripped_content:
+                    return (member.id, stripped_content)
+
+        except (json.JSONDecodeError, AttributeError):
+            # Skip malformed proxy_tags
+            continue
+
+    # No proxy tags matched - return original content
+    return (None, content)
 
 
 @router.get("/", response_model=List[schemas.Message])
@@ -55,11 +119,27 @@ async def send_message(
     Messages can be sent either:
     - As the user directly (member_id = None) - default for regular chat
     - As a member (member_id provided) - for plural users or roleplay
+    - Via proxy tags (e.g., "text: hello") - automatically detected and parsed
+
+    Proxy tag detection takes priority over manually provided member_id.
     """
-    # Verify member belongs to current user (if member_id provided)
-    if message.member_id is not None:
+    # Get all user's members for proxy tag parsing
+    user_members = db.query(models.Member).filter(
+        models.Member.user_id == current_user.id,
+        models.Member.is_active == True
+    ).all()
+
+    # Parse proxy tags from content
+    detected_member_id, stripped_content = parse_proxy_tags(message.content, user_members)
+
+    # Use proxy-detected member if found, otherwise use provided member_id
+    final_member_id = detected_member_id if detected_member_id is not None else message.member_id
+    final_content = stripped_content
+
+    # Verify member belongs to current user (if member_id provided or detected)
+    if final_member_id is not None:
         member = db.query(models.Member).filter(
-            models.Member.id == message.member_id,
+            models.Member.id == final_member_id,
             models.Member.user_id == current_user.id
         ).first()
 
@@ -85,9 +165,9 @@ async def send_message(
     # Create message
     new_message = models.Message(
         user_id=current_user.id,
-        member_id=message.member_id,
+        member_id=final_member_id,
         channel_id=message.channel_id,
-        content=message.content
+        content=final_content
     )
     db.add(new_message)
     db.commit()

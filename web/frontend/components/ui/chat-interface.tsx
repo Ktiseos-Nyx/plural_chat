@@ -66,17 +66,6 @@ export function ChatInterface({
         </div>
       )}
 
-      {/* Member Sidebar */}
-      {sidebarOpen && (
-        <div className="w-64 flex-shrink-0">
-          <MemberSidebar
-            members={members}
-            selectedMember={selectedMember}
-            onSelectMember={onSelectMember}
-          />
-        </div>
-      )}
-
       {/* Main chat area */}
       <div className="flex-1 flex flex-col">
         {/* Header */}
@@ -144,6 +133,17 @@ export function ChatInterface({
           onSend={onSendMessage}
         />
       </div>
+
+      {/* Member Sidebar - Right side (informational only) */}
+      {sidebarOpen && (
+        <div className="w-64 flex-shrink-0">
+          <MemberSidebar
+            members={members}
+            selectedMember={selectedMember}
+            onSelectMember={onSelectMember}
+          />
+        </div>
+      )}
     </div>
   )
 }

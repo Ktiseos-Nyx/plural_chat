@@ -55,8 +55,12 @@ export function MemberSidebar({
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-semibold flex items-center gap-2">
             <User className="h-5 w-5" />
-            Members
+            Available Members
           </h2>
+        </div>
+
+        <div className="text-xs text-muted-foreground">
+          Use proxy tags to switch (e.g., <code className="bg-accent px-1 rounded">text: hello</code>)
         </div>
 
         {/* Search */}
@@ -88,7 +92,6 @@ export function MemberSidebar({
             </div>
           ) : (
             filteredMembers.map((member) => {
-              const isSelected = selectedMember?.id === member.id
               const memberColor = member.color || "hsl(var(--primary))"
               const initials = getInitials(member.name)
 
@@ -96,19 +99,13 @@ export function MemberSidebar({
                 <TooltipProvider key={member.id}>
                   <Tooltip>
                     <TooltipTrigger asChild>
-                      <button
-                        onClick={() => onSelectMember(member)}
+                      <div
                         className={cn(
                           "w-full flex items-center gap-3 p-3 rounded-md",
-                          "hover:bg-accent transition-colors text-left",
-                          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                          isSelected && "bg-accent"
+                          "transition-colors",
+                          "border-l-2"
                         )}
-                        style={
-                          isSelected
-                            ? { borderLeft: `3px solid ${memberColor}` }
-                            : undefined
-                        }
+                        style={{ borderLeftColor: memberColor }}
                       >
                         {/* Avatar */}
                         <Avatar className="h-10 w-10 ring-2 ring-border flex-shrink-0">
@@ -140,9 +137,9 @@ export function MemberSidebar({
                             </div>
                           )}
                         </div>
-                      </button>
+                      </div>
                     </TooltipTrigger>
-                    <TooltipContent side="right" className="max-w-xs">
+                    <TooltipContent side="left" className="max-w-xs">
                       <div className="space-y-1">
                         <p className="font-semibold">{member.name}</p>
                         {member.pronouns && (
@@ -154,9 +151,12 @@ export function MemberSidebar({
                           <p className="text-xs">{member.description}</p>
                         )}
                         {member.proxy_tags && (
-                          <p className="text-xs font-mono text-muted-foreground">
-                            Proxy: {member.proxy_tags}
-                          </p>
+                          <div className="text-xs">
+                            <p className="text-muted-foreground mb-1">Proxy tags:</p>
+                            <code className="font-mono bg-accent px-1 rounded text-xs">
+                              {member.proxy_tags}
+                            </code>
+                          </div>
                         )}
                       </div>
                     </TooltipContent>

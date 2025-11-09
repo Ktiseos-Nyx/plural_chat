@@ -26,7 +26,7 @@ export function ChatInput({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    if (message.trim() && currentMember) {
+    if (message.trim()) {
       onSend(message)
       setMessage("")
       // Reset textarea height
@@ -55,6 +55,18 @@ export function ChatInput({
 
   return (
     <div className={cn("border-t bg-background", className)}>
+      {/* Proxy tag hint */}
+      {!currentMember && (
+        <div className="px-4 py-2 text-xs border-b bg-muted/20">
+          <div className="flex items-center gap-2 text-muted-foreground">
+            <AtSign className="h-3.5 w-3.5" />
+            <span>
+              Use proxy tags to chat as a member (e.g., <code className="bg-accent px-1 rounded">text: hello</code>)
+            </span>
+          </div>
+        </div>
+      )}
+
       {/* Current member indicator */}
       {currentMember && (
         <div
@@ -83,12 +95,7 @@ export function ChatInput({
             value={message}
             onChange={(e) => setMessage(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder={
-              currentMember
-                ? placeholder
-                : "Select a member to start chatting..."
-            }
-            disabled={!currentMember}
+            placeholder={placeholder}
             rows={1}
             className={cn(
               "w-full resize-none rounded-md border border-input bg-background px-3 py-2",
@@ -103,7 +110,7 @@ export function ChatInput({
         <Button
           type="submit"
           size="icon"
-          disabled={!message.trim() || !currentMember}
+          disabled={!message.trim()}
           className="flex-shrink-0"
         >
           <Send className="h-4 w-4" />
