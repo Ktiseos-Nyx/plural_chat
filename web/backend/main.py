@@ -27,11 +27,16 @@ async def lifespan(app: FastAPI):
     try:
         user_count = db.query(User).count()
         if user_count == 0:
+            # Get admin credentials from ENV or use defaults
+            admin_username = os.getenv("DEFAULT_ADMIN_USERNAME", "admin")
+            admin_password = os.getenv("DEFAULT_ADMIN_PASSWORD", "admin123")
+            admin_email = os.getenv("DEFAULT_ADMIN_EMAIL", "admin@plural.chat")
+
             # Create default admin user
             admin_user = User(
-                username="admin",
-                hashed_password=get_password_hash("admin123"),
-                email="admin@plural.chat",
+                username=admin_username,
+                hashed_password=get_password_hash(admin_password),
+                email=admin_email,
                 is_active=True,
                 is_verified=True
             )
@@ -56,11 +61,13 @@ async def lifespan(app: FastAPI):
             print("=" * 60)
             print("🎉 DEFAULT ADMIN USER CREATED!")
             print("=" * 60)
-            print("Username: admin")
-            print("Password: admin123")
-            print("Email:    admin@plural.chat")
+            print(f"Username: {admin_username}")
+            print(f"Password: {admin_password}")
+            print(f"Email:    {admin_email}")
             print()
-            print("⚠️  CHANGE THIS PASSWORD IMMEDIATELY!")
+            if admin_password == "admin123":
+                print("⚠️  USING DEFAULT PASSWORD - CHANGE THIS IMMEDIATELY!")
+                print("   Set DEFAULT_ADMIN_PASSWORD in .env to customize")
             print("Access admin panel at: http://localhost:8000/admin/dashboard")
             print("=" * 60)
     finally:
@@ -88,9 +95,11 @@ app.add_middleware(
 # Mount Socket.IO
 app.mount("/socket.io", app=socketio.ASGIApp(sio_app))
 
-# Mount avatars directory
+# Mount avatars directories
 os.makedirs("avatars", exist_ok=True)
+os.makedirs("member_avatars", exist_ok=True)
 app.mount("/avatars", StaticFiles(directory="avatars"), name="avatars")
+app.mount("/member_avatars", StaticFiles(directory="member_avatars"), name="member_avatars")
 
 # Include routers
 app.include_router(auth.router, prefix="/auth", tags=["auth"])
