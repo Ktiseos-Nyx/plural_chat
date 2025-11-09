@@ -232,7 +232,7 @@ class AuditLogger:
                 "ip_address": log.ip_address,
                 "success": log.success,
                 "timestamp": log.timestamp.isoformat(),
-                "metadata": json.loads(log.metadata) if log.metadata else None
+                "metadata": json.loads(log.extra_data) if log.extra_data else None
             }
             for log in logs
         ]
@@ -265,14 +265,14 @@ class AuditLogger:
             query = query.filter(models.AuditLog.ip_address == ip_address)
 
         if username:
-            # Note: This requires parsing JSON metadata which is slower
+            # Note: This requires parsing JSON extra_data which is slower
             # For production, consider adding a separate username column
             logs = query.all()
             count = 0
             for log in logs:
-                if log.metadata:
+                if log.extra_data:
                     try:
-                        metadata = json.loads(log.metadata)
+                        metadata = json.loads(log.extra_data)
                         if metadata.get("username") == username:
                             count += 1
                     except:
