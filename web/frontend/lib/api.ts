@@ -265,6 +265,17 @@ export const membersAPI = {
   delete: async (id: number) => {
     await api.delete(`/members/${id}`);
   },
+
+  uploadAvatar: async (memberId: number, file: File) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    const response = await api.post(`/members/${memberId}/avatar`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    return response.data;
+  },
 };
 
 // Messages API

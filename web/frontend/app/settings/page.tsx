@@ -25,6 +25,8 @@ export default function SettingsPage() {
   const [memberModalOpen, setMemberModalOpen] = useState(false);
   const [memberForm] = Form.useForm();
   const [proxyTags, setProxyTags] = useState<Array<{prefix: string, suffix: string}>>([{ prefix: '', suffix: '' }]);
+  const [memberAvatarFile, setMemberAvatarFile] = useState<File | null>(null);
+  const [memberAvatarPreview, setMemberAvatarPreview] = useState<string | null>(null);
 
   // PluralKit sync state
   const [pkToken, setPkToken] = useState('');
@@ -66,6 +68,8 @@ export default function SettingsPage() {
   const handleAddMember = () => {
     setEditingMember(null);
     setProxyTags([{ prefix: '', suffix: '' }]);
+    setMemberAvatarFile(null);
+    setMemberAvatarPreview(null);
     memberForm.resetFields();
     setMemberModalOpen(true);
   };
@@ -78,6 +82,14 @@ export default function SettingsPage() {
       color: member.color || '#6c757d',
       description: member.description || '',
     });
+
+    // Set avatar preview if exists
+    if (member.avatar_path) {
+      setMemberAvatarPreview(`http://localhost:8000${member.avatar_path}`);
+    } else {
+      setMemberAvatarPreview(null);
+    }
+    setMemberAvatarFile(null);
 
     // Parse existing proxy tags
     if (member.proxy_tags) {
@@ -92,6 +104,33 @@ export default function SettingsPage() {
     }
 
     setMemberModalOpen(true);
+  };
+
+  const handleMemberAvatarChange = (file: File) => {
+    // Validate file type
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+    if (!allowedTypes.includes(file.type)) {
+      message.error('Only JPEG, PNG, GIF, and WebP images are allowed');
+      return false;
+    }
+
+    // Validate file size (5MB)
+    const maxSize = 5 * 1024 * 1024;
+    if (file.size > maxSize) {
+      message.error('File size must be less than 5MB');
+      return false;
+    }
+
+    setMemberAvatarFile(file);
+
+    // Create preview
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      setMemberAvatarPreview(e.target?.result as string);
+    };
+    reader.readAsDataURL(file);
+
+    return false; // Prevent automatic upload
   };
 
   const handleDeleteMember = async (memberId: number, memberName: string) => {
@@ -127,17 +166,27 @@ export default function SettingsPage() {
         proxy_tags: validProxyTags.length > 0 ? JSON.stringify(validProxyTags) : undefined,
       };
 
+      let memberId: number;
       if (editingMember) {
         await membersAPI.update(editingMember.id, memberData);
+        memberId = editingMember.id;
         message.success('Member updated successfully');
       } else {
-        await membersAPI.create(memberData);
+        const newMember = await membersAPI.create(memberData);
+        memberId = newMember.id;
         message.success('Member created successfully');
+      }
+
+      // Upload avatar if selected
+      if (memberAvatarFile) {
+        await membersAPI.uploadAvatar(memberId, memberAvatarFile);
+        setMemberAvatarFile(null);
       }
 
       setMemberModalOpen(false);
       memberForm.resetFields();
       setProxyTags([{ prefix: '', suffix: '' }]);
+      setMemberAvatarPreview(null);
       await loadMembers();
     } catch (error: any) {
       message.error(error.response?.data?.detail || 'Failed to save member');
@@ -504,12 +553,22 @@ export default function SettingsPage() {
                             className="hover:shadow-lg transition-shadow"
                           >
                             <div className="flex items-start gap-3 mb-3">
-                              <div
-                                className="w-12 h-12 rounded-full flex items-center justify-center text-white font-bold text-lg flex-shrink-0"
-                                style={{ backgroundColor: member.color || '#6c757d' }}
-                              >
-                                {member.name.charAt(0).toUpperCase()}
-                              </div>
+                              {member.avatar_path ? (
+                                <div className="w-12 h-12 rounded-full overflow-hidden flex-shrink-0">
+                                  <img
+                                    src={`http://localhost:8000${member.avatar_path}`}
+                                    alt={member.name}
+                                    className="w-full h-full object-cover"
+                                  />
+                                </div>
+                              ) : (
+                                <div
+                                  className="w-12 h-12 rounded-full flex items-center justify-center text-white font-bold text-lg flex-shrink-0"
+                                  style={{ backgroundColor: member.color || '#6c757d' }}
+                                >
+                                  {member.name.charAt(0).toUpperCase()}
+                                </div>
+                              )}
                               <div className="flex-1 min-w-0">
                                 <h3 className="font-bold text-base truncate">{member.name}</h3>
                                 {member.pronouns && (
@@ -771,6 +830,33 @@ export default function SettingsPage() {
               size="large"
             />
           </Form.Item>
+
+          {/* Avatar Upload */}
+          <div className="mb-6">
+            <label className="block text-sm font-medium mb-3">Avatar (Optional)</label>
+            <div className="flex items-center gap-4">
+              <div className="w-20 h-20 rounded-full overflow-hidden bg-gray-200 dark:bg-gray-700 flex items-center justify-center">
+                {memberAvatarPreview ? (
+                  <img src={memberAvatarPreview} alt="Avatar" className="w-full h-full object-cover" />
+                ) : (
+                  <UserOutlined className="text-3xl text-gray-400" />
+                )}
+              </div>
+              <Upload
+                accept="image/jpeg,image/png,image/gif,image/webp"
+                beforeUpload={handleMemberAvatarChange}
+                showUploadList={false}
+                maxCount={1}
+              >
+                <Button icon={<CameraOutlined />} size="large">
+                  Choose Avatar
+                </Button>
+              </Upload>
+              <div className="text-xs text-gray-500">
+                JPEG, PNG, GIF, WebP (Max 5MB)
+              </div>
+            </div>
+          </div>
 
           <Form.Item
             label="Pronouns (Optional)"

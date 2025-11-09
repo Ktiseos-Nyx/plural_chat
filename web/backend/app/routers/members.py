@@ -1,9 +1,12 @@
 """
 Members management router
 """
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File
 from sqlalchemy.orm import Session
 from typing import List
+from pathlib import Path
+import os
+import uuid
 
 from ..database import get_db
 from .. import models, schemas
@@ -124,3 +127,75 @@ async def delete_member(
     db.delete(member)
     db.commit()
     return None
+
+
+@router.post("/{member_id}/avatar")
+async def upload_member_avatar(
+    member_id: int,
+    file: UploadFile = File(...),
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Upload an avatar for a member
+    Supported formats: JPEG, PNG, GIF, WebP
+    Max size: 5MB
+    """
+    # Get member and verify ownership
+    member = db.query(models.Member).filter(
+        models.Member.id == member_id,
+        models.Member.user_id == current_user.id
+    ).first()
+
+    if not member:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Member not found"
+        )
+
+    # Validate file type
+    allowed_types = ["image/jpeg", "image/png", "image/gif", "image/webp"]
+    if file.content_type not in allowed_types:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Invalid file type. Allowed: {', '.join(allowed_types)}"
+        )
+
+    # Validate file size (5MB max)
+    max_size = 5 * 1024 * 1024
+    contents = await file.read()
+    if len(contents) > max_size:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="File too large. Maximum size is 5MB"
+        )
+
+    # Create member_avatars directory if it doesn't exist
+    avatars_dir = Path("member_avatars")
+    avatars_dir.mkdir(exist_ok=True)
+
+    # Generate unique filename
+    file_ext = Path(file.filename).suffix
+    filename = f"{uuid.uuid4()}{file_ext}"
+    file_path = avatars_dir / filename
+
+    # Save file
+    with open(file_path, "wb") as f:
+        f.write(contents)
+
+    # Delete old avatar if exists
+    if member.avatar_path:
+        old_path = Path(member.avatar_path.lstrip('/'))
+        if old_path.exists():
+            old_path.unlink()
+
+    # Update member with new avatar path
+    member.avatar_path = f"/member_avatars/{filename}"
+    db.commit()
+    db.refresh(member)
+
+    return {
+        "success": True,
+        "avatar_path": member.avatar_path,
+        "message": "Avatar uploaded successfully"
+    }

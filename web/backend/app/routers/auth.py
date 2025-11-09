@@ -163,7 +163,7 @@ async def _sync_pluralkit_background(user_id: int, pk_token: str):
 
                 # Check if member exists
                 existing = db.query(models.Member).filter(
-                    models.Member.user_id == current_user.id,
+                    models.Member.user_id == user_id,
                     models.Member.pk_id == pk_id
                 ).first()
 
@@ -178,7 +178,7 @@ async def _sync_pluralkit_background(user_id: int, pk_token: str):
                 else:
                     # Create new
                     new_member = models.Member(
-                        user_id=current_user.id,
+                        user_id=user_id,
                         name=name,
                         pronouns=pk_member.get("pronouns"),
                         color="#" + pk_member.get("color", "6c757d"),
