@@ -26,50 +26,84 @@ async def lifespan(app: FastAPI):
     db = SessionLocal()
     try:
         user_count = db.query(User).count()
+        channel_count = db.query(Channel).count()
+
+        # Only create default admin if ENV variable is explicitly set
         if user_count == 0:
-            # Get admin credentials from ENV or use defaults
-            admin_username = os.getenv("DEFAULT_ADMIN_USERNAME", "admin")
-            admin_password = os.getenv("DEFAULT_ADMIN_PASSWORD", "admin123")
-            admin_email = os.getenv("DEFAULT_ADMIN_EMAIL", "admin@plural.chat")
+            admin_username = os.getenv("DEFAULT_ADMIN_USERNAME")
 
-            # Create default admin user
-            admin_user = User(
-                username=admin_username,
-                hashed_password=get_password_hash(admin_password),
-                email=admin_email,
-                is_active=True,
-                is_verified=True
-            )
-            db.add(admin_user)
-            db.commit()
-            db.refresh(admin_user)
+            if admin_username:
+                # ENV is set - create default admin user
+                admin_password = os.getenv("DEFAULT_ADMIN_PASSWORD", "admin123")
+                admin_email = os.getenv("DEFAULT_ADMIN_EMAIL", "admin@plural.chat")
 
-            # Create default "general" channel
-            default_channel = Channel(
-                user_id=admin_user.id,
-                name="general",
-                description="General discussion",
-                emoji="💬",
-                is_default=True,
-                is_archived=False,
-                position=0,
-                color="#8b5cf6"
-            )
-            db.add(default_channel)
-            db.commit()
+                admin_user = User(
+                    username=admin_username,
+                    hashed_password=get_password_hash(admin_password),
+                    email=admin_email,
+                    is_active=True,
+                    is_verified=True
+                )
+                db.add(admin_user)
+                db.commit()
+                db.refresh(admin_user)
 
-            print("=" * 60)
-            print("🎉 DEFAULT ADMIN USER CREATED!")
-            print("=" * 60)
-            print(f"Username: {admin_username}")
-            print(f"Password: {admin_password}")
-            print(f"Email:    {admin_email}")
-            print()
-            if admin_password == "admin123":
-                print("⚠️  USING DEFAULT PASSWORD - CHANGE THIS IMMEDIATELY!")
-                print("   Set DEFAULT_ADMIN_PASSWORD in .env to customize")
-            print("Access admin panel at: http://localhost:8000/admin/dashboard")
-            print("=" * 60)
+                # Create default "general" channel
+                default_channel = Channel(
+                    user_id=admin_user.id,
+                    name="general",
+                    description="General discussion",
+                    emoji="💬",
+                    is_default=True,
+                    is_archived=False,
+                    position=0,
+                    color="#8b5cf6"
+                )
+                db.add(default_channel)
+                db.commit()
+
+                print("=" * 60)
+                print("🎉 DEFAULT ADMIN USER CREATED!")
+                print("=" * 60)
+                print(f"Username: {admin_username}")
+                print(f"Password: {admin_password}")
+                print(f"Email:    {admin_email}")
+                print()
+                if admin_password == "admin123":
+                    print("⚠️  USING DEFAULT PASSWORD - CHANGE THIS IMMEDIATELY!")
+                    print("   Set DEFAULT_ADMIN_PASSWORD in .env to customize")
+                print("Access admin panel at: http://localhost:8000/admin/dashboard")
+                print("=" * 60)
+            else:
+                # No ENV set - user can register their own account
+                print("=" * 60)
+                print("ℹ️  NO DEFAULT ADMIN CONFIGURED")
+                print("=" * 60)
+                print("Register your own account at: http://localhost:3000/signup")
+                print("Your account will be the first user in the system.")
+                print()
+                print("To auto-create an admin account, set DEFAULT_ADMIN_USERNAME")
+                print("in your .env file (see .env.example)")
+                print("=" * 60)
+
+        # Always ensure at least one default channel exists
+        if channel_count == 0:
+            # Get first user to own the channel
+            first_user = db.query(User).first()
+            if first_user:
+                default_channel = Channel(
+                    user_id=first_user.id,
+                    name="general",
+                    description="General discussion",
+                    emoji="💬",
+                    is_default=True,
+                    is_archived=False,
+                    position=0,
+                    color="#8b5cf6"
+                )
+                db.add(default_channel)
+                db.commit()
+                print("✅ Created default 'general' channel")
     finally:
         db.close()
 
