@@ -18,12 +18,14 @@ export default function HomePage() {
     members,
     channels,
     messages,
+    onlineUsers,
     selectedMember,
     selectedChannel,
     sidebarOpen,
     setMembers,
     setChannels,
     setMessages,
+    setOnlineUsers,
     setSelectedMember,
     setSelectedChannel,
     toggleSidebar,
@@ -49,12 +51,14 @@ export default function HomePage() {
     // Load initial data
     const loadData = async () => {
       try {
-        const [membersData, channelsData] = await Promise.all([
+        const [membersData, channelsData, onlineUsersRes] = await Promise.all([
           membersAPI.getAll(),
           channelsAPI.getAll(),
+          fetch('http://localhost:8000/users/online').then(r => r.json()),
         ]);
         setMembers(membersData);
         setChannels(channelsData);
+        setOnlineUsers(onlineUsersRes);
 
         // Select default channel if not already selected
         if (!selectedChannel && channelsData.length > 0) {
@@ -69,7 +73,7 @@ export default function HomePage() {
     };
 
     loadData();
-  }, [user, router, setMembers, setChannels, selectedChannel, setSelectedChannel]);
+  }, [user, router, setMembers, setChannels, setOnlineUsers, selectedChannel, setSelectedChannel]);
 
   // Load messages when channel changes
   useEffect(() => {
@@ -182,6 +186,7 @@ export default function HomePage() {
         members={members}
         channels={channels}
         messages={messages}
+        onlineUsers={onlineUsers}
         selectedMember={selectedMember}
         selectedChannel={selectedChannel}
         onSelectMember={setSelectedMember}

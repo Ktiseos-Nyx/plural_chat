@@ -65,6 +65,12 @@ interface AppState {
   setMessages: (messages: Message[]) => void;
   addMessage: (message: Message) => void;
 
+  // Online Users (multi-user chat)
+  onlineUsers: User[];
+  setOnlineUsers: (users: User[]) => void;
+  addOnlineUser: (user: User) => void;
+  removeOnlineUser: (userId: number) => void;
+
   // UI State
   sidebarOpen: boolean;
   toggleSidebar: () => void;
@@ -112,6 +118,20 @@ export const useStore = create<AppState>()(
       setMessages: (messages) => set({ messages }),
       addMessage: (message) =>
         set((state) => ({ messages: [...state.messages, message] })),
+
+      // Online Users
+      onlineUsers: [],
+      setOnlineUsers: (users) => set({ onlineUsers: users }),
+      addOnlineUser: (user) =>
+        set((state) => ({
+          onlineUsers: state.onlineUsers.find((u) => u.id === user.id)
+            ? state.onlineUsers
+            : [...state.onlineUsers, user],
+        })),
+      removeOnlineUser: (userId) =>
+        set((state) => ({
+          onlineUsers: state.onlineUsers.filter((u) => u.id !== userId),
+        })),
 
       // UI State
       sidebarOpen: true,

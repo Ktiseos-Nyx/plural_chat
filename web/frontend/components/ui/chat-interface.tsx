@@ -7,15 +7,17 @@ import { ChatList } from "@/components/ui/chat-list"
 import { ChatInput } from "@/components/ui/chat-input"
 import { MemberSidebar } from "@/components/ui/member-sidebar"
 import { ChannelSidebar } from "@/components/ui/channel-sidebar"
+import { OnlineUsersSidebar } from "@/components/ui/online-users-sidebar"
 import { Separator } from "@/components/ui/separator"
 import { cn } from "@/lib/utils"
-import type { Member, Message } from "@/lib/store"
+import type { Member, Message, User } from "@/lib/store"
 import type { Channel } from "@/lib/api"
 
 interface ChatInterfaceProps {
   members: Member[]
   channels: Channel[]
   messages: Message[]
+  onlineUsers: User[]
   selectedMember?: Member | null
   selectedChannel?: Channel | null
   onSelectMember: (member: Member) => void
@@ -34,6 +36,7 @@ export function ChatInterface({
   members,
   channels,
   messages,
+  onlineUsers,
   selectedMember,
   selectedChannel,
   onSelectMember,
@@ -134,7 +137,12 @@ export function ChatInterface({
         />
       </div>
 
-      {/* TODO: Right sidebar for logged-in users */}
+      {/* Online Users Sidebar - Right side */}
+      {sidebarOpen && (
+        <div className="w-64 flex-shrink-0">
+          <OnlineUsersSidebar onlineUsers={onlineUsers} />
+        </div>
+      )}
     </div>
   )
 }
