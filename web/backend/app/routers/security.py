@@ -184,6 +184,23 @@ async def register_user(
     db.commit()
     db.refresh(new_user)
 
+    # Create default "general" channel if no channels exist (first user)
+    from ..database import Channel
+    existing_channels = db.query(Channel).count()
+    if existing_channels == 0:
+        default_channel = Channel(
+            user_id=new_user.id,
+            name="general",
+            description="General discussion",
+            emoji="💬",
+            is_default=True,
+            is_archived=False,
+            position=0,
+            color="#8b5cf6"
+        )
+        db.add(default_channel)
+        db.commit()
+
     # Log registration
     audit_logger.log(
         db=db,

@@ -13,17 +13,20 @@ interface ChatMessageProps {
 }
 
 export function ChatMessage({ message, className }: ChatMessageProps) {
-  const { member, content, timestamp } = message
+  const { member, user, content, timestamp } = message
 
   // Format timestamp
   const timeString = format(new Date(timestamp), "h:mm a")
   const fullTimeString = format(new Date(timestamp), "PPP 'at' p")
 
-  // Get member color or use default
-  const memberColor = member.color || "hsl(var(--primary))"
+  // Use member if present, otherwise use user
+  const displayName = member ? member.name : user?.username || "Unknown User"
+  const displayColor = member ? (member.color || "hsl(var(--primary))") : (user?.theme_color || "hsl(var(--primary))")
+  const displayPronouns = member?.pronouns || null
+  const avatarPath = member?.avatar_path || user?.avatar_path || null
 
   // Get initials for avatar fallback
-  const initials = member.name
+  const initials = displayName
     .split(" ")
     .map((n) => n[0])
     .join("")
@@ -43,14 +46,14 @@ export function ChatMessage({ message, className }: ChatMessageProps) {
           <TooltipTrigger asChild>
             <div className="flex-shrink-0 pt-0.5">
               <Avatar className="h-10 w-10 ring-2 ring-border">
-                {member.avatar_path ? (
+                {avatarPath ? (
                   <AvatarImage
-                    src={`/api/avatars/${member.avatar_path}`}
-                    alt={member.name}
+                    src={`http://localhost:8000${avatarPath}`}
+                    alt={displayName}
                   />
                 ) : null}
                 <AvatarFallback
-                  style={{ backgroundColor: memberColor }}
+                  style={{ backgroundColor: displayColor }}
                   className="text-white font-semibold"
                 >
                   {initials}
@@ -60,13 +63,13 @@ export function ChatMessage({ message, className }: ChatMessageProps) {
           </TooltipTrigger>
           <TooltipContent side="right" className="max-w-xs">
             <div className="space-y-1">
-              <p className="font-semibold">{member.name}</p>
-              {member.pronouns && (
+              <p className="font-semibold">{displayName}</p>
+              {displayPronouns && (
                 <p className="text-xs text-muted-foreground">
-                  {member.pronouns}
+                  {displayPronouns}
                 </p>
               )}
-              {member.description && (
+              {member?.description && (
                 <p className="text-xs">{member.description}</p>
               )}
             </div>
@@ -82,10 +85,10 @@ export function ChatMessage({ message, className }: ChatMessageProps) {
             <Tooltip>
               <TooltipTrigger asChild>
                 <span
-                  style={{ color: memberColor }}
+                  style={{ color: displayColor }}
                   className="font-semibold text-[15px] hover:underline cursor-pointer"
                 >
-                  {member.name}
+                  {displayName}
                 </span>
               </TooltipTrigger>
               <TooltipContent>
@@ -94,9 +97,9 @@ export function ChatMessage({ message, className }: ChatMessageProps) {
             </Tooltip>
           </TooltipProvider>
 
-          {member.pronouns && (
+          {displayPronouns && (
             <span className="text-xs text-muted-foreground font-normal">
-              ({member.pronouns})
+              ({displayPronouns})
             </span>
           )}
 
