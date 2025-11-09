@@ -5,11 +5,11 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Card, Tabs, Input, Button, Form, message, Alert, Upload } from 'antd';
-import { UserOutlined, LockOutlined, SafetyOutlined, HistoryOutlined, LinkOutlined, SyncOutlined, BgColorsOutlined, CameraOutlined } from '@ant-design/icons';
+import { Card, Tabs, Input, Button, Form, message, Alert, Upload, Modal, Tag, Space, Divider } from 'antd';
+import { UserOutlined, LockOutlined, SafetyOutlined, HistoryOutlined, LinkOutlined, SyncOutlined, BgColorsOutlined, CameraOutlined, TeamOutlined, PlusOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
 import Link from 'next/link';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
-import { authAPI, securityAPI } from '@/lib/api';
+import { authAPI, securityAPI, membersAPI, type Member } from '@/lib/api';
 import { useStore } from '@/lib/store';
 
 export default function SettingsPage() {
@@ -18,6 +18,13 @@ export default function SettingsPage() {
   const [activeTab, setActiveTab] = useState<string>('profile');
   const [loading, setLoading] = useState(false);
 
+  // Members state
+  const [members, setMembers] = useState<Member[]>([]);
+  const [membersLoading, setMembersLoading] = useState(false);
+  const [editingMember, setEditingMember] = useState<Member | null>(null);
+  const [memberModalOpen, setMemberModalOpen] = useState(false);
+  const [memberForm] = Form.useForm();
+  const [proxyTags, setProxyTags] = useState<Array<{prefix: string, suffix: string}>>([{ prefix: '', suffix: '' }]);
 
   // PluralKit sync state
   const [pkToken, setPkToken] = useState('');
@@ -40,8 +47,120 @@ export default function SettingsPage() {
       if (user.avatar_path) {
         setAvatarPreview(`http://localhost:8000${user.avatar_path}`);
       }
+      loadMembers();
     }
   }, [user, router]);
+
+  const loadMembers = async () => {
+    setMembersLoading(true);
+    try {
+      const data = await membersAPI.getAll();
+      setMembers(data);
+    } catch (error) {
+      console.error('Failed to load members:', error);
+    } finally {
+      setMembersLoading(false);
+    }
+  };
+
+  const handleAddMember = () => {
+    setEditingMember(null);
+    setProxyTags([{ prefix: '', suffix: '' }]);
+    memberForm.resetFields();
+    setMemberModalOpen(true);
+  };
+
+  const handleEditMember = (member: Member) => {
+    setEditingMember(member);
+    memberForm.setFieldsValue({
+      name: member.name,
+      pronouns: member.pronouns || '',
+      color: member.color || '#6c757d',
+      description: member.description || '',
+    });
+
+    // Parse existing proxy tags
+    if (member.proxy_tags) {
+      try {
+        const parsed = JSON.parse(member.proxy_tags);
+        setProxyTags(parsed.length > 0 ? parsed : [{ prefix: '', suffix: '' }]);
+      } catch {
+        setProxyTags([{ prefix: '', suffix: '' }]);
+      }
+    } else {
+      setProxyTags([{ prefix: '', suffix: '' }]);
+    }
+
+    setMemberModalOpen(true);
+  };
+
+  const handleDeleteMember = async (memberId: number, memberName: string) => {
+    if (!confirm(`Delete member "${memberName}"? This cannot be undone.`)) {
+      return;
+    }
+
+    setMembersLoading(true);
+    try {
+      await membersAPI.delete(memberId);
+      message.success('Member deleted successfully');
+      await loadMembers();
+    } catch (error: any) {
+      message.error(error.response?.data?.detail || 'Failed to delete member');
+    } finally {
+      setMembersLoading(false);
+    }
+  };
+
+  const handleMemberSubmit = async (values: any) => {
+    setMembersLoading(true);
+    try {
+      // Filter out empty proxy tags
+      const validProxyTags = proxyTags.filter(
+        tag => tag.prefix.trim() !== '' || tag.suffix.trim() !== ''
+      );
+
+      const memberData = {
+        name: values.name,
+        pronouns: values.pronouns || undefined,
+        color: values.color || '#6c757d',
+        description: values.description || undefined,
+        proxy_tags: validProxyTags.length > 0 ? JSON.stringify(validProxyTags) : undefined,
+      };
+
+      if (editingMember) {
+        await membersAPI.update(editingMember.id, memberData);
+        message.success('Member updated successfully');
+      } else {
+        await membersAPI.create(memberData);
+        message.success('Member created successfully');
+      }
+
+      setMemberModalOpen(false);
+      memberForm.resetFields();
+      setProxyTags([{ prefix: '', suffix: '' }]);
+      await loadMembers();
+    } catch (error: any) {
+      message.error(error.response?.data?.detail || 'Failed to save member');
+    } finally {
+      setMembersLoading(false);
+    }
+  };
+
+  const addProxyTag = () => {
+    setProxyTags([...proxyTags, { prefix: '', suffix: '' }]);
+  };
+
+  const removeProxyTag = (index: number) => {
+    if (proxyTags.length > 1) {
+      setProxyTags(proxyTags.filter((_, i) => i !== index));
+    }
+  };
+
+  const updateProxyTag = (index: number, field: 'prefix' | 'suffix', value: string) => {
+    const newTags = [...proxyTags];
+    newTags[index][field] = value;
+    setProxyTags(newTags);
+  };
 
   const handleProfileUpdate = async (values: any) => {
     setLoading(true);
@@ -312,7 +431,138 @@ export default function SettingsPage() {
                         </Form.Item>
                       </Form>
                     </div>
+                  </div>
+                ),
+              },
+              {
+                key: 'members',
+                label: (
+                  <span>
+                    <TeamOutlined /> Members
+                  </span>
+                ),
+                children: (
+                  <div className="space-y-6">
+                    <div className="flex items-center justify-between">
+                      <h2 className="text-xl font-semibold">Your Members</h2>
+                      <Button
+                        type="primary"
+                        icon={<PlusOutlined />}
+                        onClick={handleAddMember}
+                        size="large"
+                      >
+                        Add Member
+                      </Button>
+                    </div>
 
+                    <Alert
+                      message="What are members?"
+                      description="Members allow you to chat as different personas, characters, or system members. You can use proxy tags (like 'text: message') to automatically send messages as a specific member. This is optional - you can always chat as yourself!"
+                      type="info"
+                      showIcon
+                    />
+
+                    {/* Members List */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {membersLoading && members.length === 0 && (
+                        <Card>
+                          <p className="text-gray-500">Loading members...</p>
+                        </Card>
+                      )}
+
+                      {!membersLoading && members.length === 0 && (
+                        <Card className="col-span-full">
+                          <div className="text-center py-12">
+                            <UserOutlined className="text-6xl text-gray-400 mb-4" />
+                            <h3 className="text-xl font-semibold mb-2">No members yet</h3>
+                            <p className="text-gray-600 mb-4">
+                              Create your first member to get started!
+                            </p>
+                            <Button
+                              type="primary"
+                              size="large"
+                              icon={<PlusOutlined />}
+                              onClick={handleAddMember}
+                            >
+                              Add Your First Member
+                            </Button>
+                          </div>
+                        </Card>
+                      )}
+
+                      {members.map((member) => {
+                        let proxyTagsList: Array<{prefix: string, suffix: string}> = [];
+                        if (member.proxy_tags) {
+                          try {
+                            proxyTagsList = JSON.parse(member.proxy_tags);
+                          } catch {}
+                        }
+
+                        return (
+                          <Card
+                            key={member.id}
+                            className="hover:shadow-lg transition-shadow"
+                          >
+                            <div className="flex items-start gap-3 mb-3">
+                              <div
+                                className="w-12 h-12 rounded-full flex items-center justify-center text-white font-bold text-lg flex-shrink-0"
+                                style={{ backgroundColor: member.color || '#6c757d' }}
+                              >
+                                {member.name.charAt(0).toUpperCase()}
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <h3 className="font-bold text-base truncate">{member.name}</h3>
+                                {member.pronouns && (
+                                  <p className="text-sm text-gray-600">{member.pronouns}</p>
+                                )}
+                              </div>
+                            </div>
+
+                            {member.description && (
+                              <p className="text-sm text-gray-700 mb-3 line-clamp-2">
+                                {member.description}
+                              </p>
+                            )}
+
+                            {proxyTagsList.length > 0 && (
+                              <div className="mb-3 pb-3 border-t pt-3">
+                                <p className="text-xs font-semibold text-gray-600 mb-2">
+                                  Proxy Tags:
+                                </p>
+                                <div className="flex flex-wrap gap-1">
+                                  {proxyTagsList.map((tag, idx) => (
+                                    <Tag key={idx} color="blue" className="text-xs">
+                                      {tag.prefix || ''}text{tag.suffix || ''}
+                                    </Tag>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+
+                            <div className="flex gap-2">
+                              <Button
+                                type="default"
+                                icon={<EditOutlined />}
+                                onClick={() => handleEditMember(member)}
+                                block
+                              >
+                                Edit
+                              </Button>
+                              <Button
+                                danger
+                                icon={<DeleteOutlined />}
+                                onClick={() => handleDeleteMember(member.id, member.name)}
+                                block
+                              >
+                                Delete
+                              </Button>
+                            </div>
+                          </Card>
+                        );
+                      })}
+                    </div>
+
+                    {/* PluralKit Integration Section */}
                     <div className="border-t pt-6">
                       <h2 className="text-xl font-semibold mb-4">PluralKit Integration</h2>
                       <Alert
@@ -492,6 +742,170 @@ export default function SettingsPage() {
           </Link>
         </div>
       </div>
+
+      {/* Member Add/Edit Modal */}
+      <Modal
+        title={editingMember ? 'Edit Member' : 'Add New Member'}
+        open={memberModalOpen}
+        onCancel={() => setMemberModalOpen(false)}
+        footer={null}
+        width={700}
+      >
+        <Form
+          form={memberForm}
+          layout="vertical"
+          onFinish={handleMemberSubmit}
+          className="mt-4"
+          initialValues={{
+            color: '#6c757d'
+          }}
+        >
+          <Form.Item
+            label="Name"
+            name="name"
+            rules={[{ required: true, message: 'Please enter a name' }]}
+          >
+            <Input
+              prefix={<UserOutlined />}
+              placeholder="Member name"
+              size="large"
+            />
+          </Form.Item>
+
+          <Form.Item
+            label="Pronouns (Optional)"
+            name="pronouns"
+          >
+            <Input
+              placeholder="e.g., they/them, he/him, she/her"
+              size="large"
+            />
+          </Form.Item>
+
+          <Form.Item
+            label="Description (Optional)"
+            name="description"
+          >
+            <Input.TextArea
+              placeholder="Brief description of this member..."
+              rows={3}
+              size="large"
+            />
+          </Form.Item>
+
+          <Form.Item label="Color">
+            <div className="flex gap-2">
+              <Form.Item name="color" noStyle>
+                <Input
+                  placeholder="#6c757d"
+                  size="large"
+                  style={{ flex: 1 }}
+                />
+              </Form.Item>
+              <input
+                type="color"
+                value={memberForm.getFieldValue('color') || '#6c757d'}
+                onChange={(e) => memberForm.setFieldValue('color', e.target.value)}
+                className="w-12 h-10 rounded border cursor-pointer"
+              />
+            </div>
+          </Form.Item>
+
+          <Divider />
+
+          <div className="mb-4">
+            <div className="flex items-center justify-between mb-3">
+              <div>
+                <h3 className="font-semibold text-base">Proxy Tags (Optional)</h3>
+                <p className="text-sm text-gray-600">
+                  Automatically send messages as this member using proxy tags
+                </p>
+              </div>
+              <Button
+                type="dashed"
+                icon={<PlusOutlined />}
+                onClick={addProxyTag}
+                size="small"
+              >
+                Add Tag
+              </Button>
+            </div>
+
+            <Alert
+              message="How proxy tags work"
+              description={
+                <div className="text-sm">
+                  <p className="mb-2">
+                    Proxy tags let you send messages as this member automatically. For example:
+                  </p>
+                  <ul className="list-disc list-inside space-y-1">
+                    <li>
+                      <code>text:</code> hello → sends "hello" as this member
+                    </li>
+                    <li>
+                      <code>:text</code> hello → sends "hello" as this member
+                    </li>
+                    <li>
+                      <code>{'{{'}}</code> hello <code>{'}}'}</code> → sends "hello" as this member
+                    </li>
+                  </ul>
+                </div>
+              }
+              type="info"
+              showIcon
+              icon={<LinkOutlined />}
+              className="mb-3"
+            />
+
+            <Space direction="vertical" style={{ width: '100%' }} size="small">
+              {proxyTags.map((tag, index) => (
+                <div key={index} className="flex gap-2 items-center">
+                  <Input
+                    placeholder="Prefix (e.g., 'text:')"
+                    value={tag.prefix}
+                    onChange={(e) => updateProxyTag(index, 'prefix', e.target.value)}
+                    style={{ flex: 1 }}
+                  />
+                  <span className="text-gray-500">message</span>
+                  <Input
+                    placeholder="Suffix (e.g., ':text')"
+                    value={tag.suffix}
+                    onChange={(e) => updateProxyTag(index, 'suffix', e.target.value)}
+                    style={{ flex: 1 }}
+                  />
+                  {proxyTags.length > 1 && (
+                    <Button
+                      danger
+                      type="text"
+                      icon={<DeleteOutlined />}
+                      onClick={() => removeProxyTag(index)}
+                    />
+                  )}
+                </div>
+              ))}
+            </Space>
+          </div>
+
+          <Form.Item className="mb-0 mt-6">
+            <Space>
+              <Button
+                type="primary"
+                htmlType="submit"
+                loading={membersLoading}
+                size="large"
+              >
+                {editingMember ? 'Update Member' : 'Create Member'}
+              </Button>
+              <Button
+                onClick={() => setMemberModalOpen(false)}
+                size="large"
+              >
+                Cancel
+              </Button>
+            </Space>
+          </Form.Item>
+        </Form>
+      </Modal>
     </div>
   );
 }

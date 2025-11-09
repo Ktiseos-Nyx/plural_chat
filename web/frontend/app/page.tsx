@@ -163,10 +163,6 @@ export default function HomePage() {
     router.push('/settings');
   };
 
-  const handleMembers = () => {
-    router.push('/members');
-  };
-
   const handleLogout = () => {
     // Clear user data and redirect to login
     useStore.getState().setUser(null);
@@ -199,7 +195,6 @@ export default function HomePage() {
         onAddChannel={handleAddChannel}
         onEditChannel={handleEditChannel}
         onSettings={handleSettings}
-        onMembers={handleMembers}
         onLogout={handleLogout}
         sidebarOpen={sidebarOpen}
         onToggleSidebar={toggleSidebar}
