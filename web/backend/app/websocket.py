@@ -43,6 +43,10 @@ class ConnectionManager:
         """Get all session IDs for a user"""
         return self.active_connections.get(user_id, set())
 
+    def get_online_user_ids(self) -> list[str]:
+        """Get list of all online user IDs"""
+        return list(self.active_connections.keys())
+
 
 connection_manager = ConnectionManager()
 
@@ -69,6 +73,10 @@ async def connect(sid, environ, auth):
                 session['user_id'] = user_id
 
             await sio_app.emit('connected', {'status': 'connected'}, room=sid)
+
+            # Broadcast user online status to all users
+            await broadcast_to_all('user_online', {'user_id': int(user_id)})
+
             logger.info(f"Client {sid} connected as user {user_id}")
             return True
         except Exception as e:
@@ -88,6 +96,11 @@ async def disconnect(sid):
             user_id = session.get('user_id')
             if user_id:
                 connection_manager.disconnect(sid, user_id)
+
+                # Only broadcast offline if user has no more sessions
+                if not connection_manager.get_user_sessions(user_id):
+                    await broadcast_to_all('user_offline', {'user_id': int(user_id)})
+
         logger.info(f"Client {sid} disconnected")
     except Exception as e:
         logger.error(f"Disconnect error: {e}")

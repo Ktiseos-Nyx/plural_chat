@@ -70,6 +70,34 @@ async def health_check():
         "websocket": "active"
     }
 
+
+@app.get("/users/online")
+async def get_online_users():
+    """Get list of currently online users"""
+    from app.database import SessionLocal
+    from app.database import User
+
+    online_user_ids = connection_manager.get_online_user_ids()
+
+    if not online_user_ids:
+        return []
+
+    # Get user details
+    db = SessionLocal()
+    try:
+        users = db.query(User).filter(User.id.in_([int(uid) for uid in online_user_ids])).all()
+        return [
+            {
+                "id": user.id,
+                "username": user.username,
+                "theme_color": user.theme_color,
+                "avatar_path": user.avatar_path
+            }
+            for user in users
+        ]
+    finally:
+        db.close()
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(
