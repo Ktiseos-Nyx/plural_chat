@@ -40,5 +40,22 @@ plural-chat = "main:main"
 requires = ["setuptools>=45", "wheel"]
 build-backend = "setuptools.build_meta"
 
-[tool.setuptools.packages.find]
-where = ["."]
+[tool.setuptools]
+py-modules = [
+    "main", 
+    "member_manager", 
+    "settings_manager", 
+    "database_manager",
+    "pluralkit_api",
+    "pluralkit_dialog", 
+    "pk_export_parser",
+    "about_dialog",
+    "help_dialog",
+    "aria2_avatar_downloader",
+    "cleanup_for_release",
+    "custom_themes",
+    "diary_dialog",
+    "parse_readme",
+    "pk_sync_worker"
+]
+packages = ["ui", "ui.themes"]
