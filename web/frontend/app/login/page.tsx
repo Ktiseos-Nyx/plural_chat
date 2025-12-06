@@ -5,12 +5,16 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Input, Button, Card, Alert } from 'antd';
-import { LockOutlined, UserOutlined, SafetyOutlined } from '@ant-design/icons';
 import { securityAPI, authAPI } from '@/lib/api';
 import { useStore } from '@/lib/store';
 import Link from 'next/link';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Label } from '@/components/ui/label';
+import { Lock, User, Shield, AlertCircle } from 'lucide-react';
 
 export default function LoginPage() {
   // Username/Password login state
@@ -107,91 +111,84 @@ export default function LoginPage() {
       <div className="absolute top-4 right-4">
         <ThemeToggle />
       </div>
-      <Card
-        style={{ width: '100%', maxWidth: 500 }}
-        className="shadow-lg"
-      >
-        <div className="text-center mb-6">
-          <h1 className="text-3xl font-bold mb-2">
-            Plural Chat
-          </h1>
-          <p className="text-muted-foreground">
+      <Card className="w-full max-w-md shadow-lg">
+        <CardHeader className="text-center">
+          <CardTitle className="text-3xl font-bold">Plural Chat</CardTitle>
+          <CardDescription>
             {requires2FA ? 'Two-Factor Authentication' : 'Sign in to continue'}
-          </p>
-        </div>
-
-        {error && (
-          <Alert
-            message={error}
-            type="error"
-            showIcon
-            closable
-            onClose={() => setError('')}
-            className="mb-4"
-          />
-        )}
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {error && (
+            <Alert variant="destructive" className="mb-4">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          )}
 
         {requires2FA ? (
           // 2FA verification screen
           <div className="space-y-4">
             <div className="text-center">
-              <SafetyOutlined className="text-4xl text-primary mb-2" />
-              <p className="mb-4">
+              <Shield className="h-12 w-12 text-primary mx-auto mb-2" />
+              <p className="text-sm text-muted-foreground mb-4">
                 Enter your 6-digit code from your authenticator app, or use a backup code.
               </p>
             </div>
 
-            <div>
-              <label className="block text-sm font-medium mb-2">
-                Authenticator Code
-              </label>
-              <Input
-                size="large"
-                prefix={<SafetyOutlined />}
-                placeholder="000000"
-                maxLength={6}
-                value={totpCode}
-                onChange={(e) => {
-                  setTotpCode(e.target.value);
-                  setBackupCode(''); // Clear backup code
-                }}
-                onPressEnter={handle2FAVerification}
-              />
+            <div className="space-y-2">
+              <Label htmlFor="totp">Authenticator Code</Label>
+              <div className="relative">
+                <Shield className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                <Input
+                  id="totp"
+                  type="text"
+                  placeholder="000000"
+                  maxLength={6}
+                  value={totpCode}
+                  onChange={(e) => {
+                    setTotpCode(e.target.value);
+                    setBackupCode(''); // Clear backup code
+                  }}
+                  onKeyDown={(e) => e.key === 'Enter' && handle2FAVerification()}
+                  className="pl-10"
+                />
+              </div>
             </div>
 
             <div className="text-center text-muted-foreground text-sm">OR</div>
 
-            <div>
-              <label className="block text-sm font-medium mb-2">
-                Backup Code
-              </label>
-              <Input
-                size="large"
-                prefix={<LockOutlined />}
-                placeholder="Enter 8-digit backup code"
-                maxLength={8}
-                value={backupCode}
-                onChange={(e) => {
-                  setBackupCode(e.target.value);
-                  setTotpCode(''); // Clear TOTP code
-                }}
-                onPressEnter={handle2FAVerification}
-              />
+            <div className="space-y-2">
+              <Label htmlFor="backup">Backup Code</Label>
+              <div className="relative">
+                <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                <Input
+                  id="backup"
+                  type="text"
+                  placeholder="Enter 8-digit backup code"
+                  maxLength={8}
+                  value={backupCode}
+                  onChange={(e) => {
+                    setBackupCode(e.target.value);
+                    setTotpCode(''); // Clear TOTP code
+                  }}
+                  onKeyDown={(e) => e.key === 'Enter' && handle2FAVerification()}
+                  className="pl-10"
+                />
+              </div>
             </div>
 
             <Button
-              type="primary"
-              size="large"
-              block
-              loading={loading}
+              className="w-full"
+              disabled={loading}
               onClick={handle2FAVerification}
             >
-              Verify
+              {loading ? 'Verifying...' : 'Verify'}
             </Button>
 
             <Button
-              type="link"
-              block
+              variant="ghost"
+              className="w-full"
               onClick={() => {
                 setRequires2FA(false);
                 setTotpCode('');
@@ -205,42 +202,44 @@ export default function LoginPage() {
         ) : (
           // Normal login screen
           <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium mb-2">
-                Username
-              </label>
-              <Input
-                size="large"
-                prefix={<UserOutlined />}
-                placeholder="Enter your username"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                onPressEnter={handleUsernameLogin}
-              />
+            <div className="space-y-2">
+              <Label htmlFor="username">Username</Label>
+              <div className="relative">
+                <User className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                <Input
+                  id="username"
+                  type="text"
+                  placeholder="Enter your username"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleUsernameLogin()}
+                  className="pl-10"
+                />
+              </div>
             </div>
 
-            <div>
-              <label className="block text-sm font-medium mb-2">
-                Password
-              </label>
-              <Input.Password
-                size="large"
-                prefix={<LockOutlined />}
-                placeholder="Enter your password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                onPressEnter={handleUsernameLogin}
-              />
+            <div className="space-y-2">
+              <Label htmlFor="password">Password</Label>
+              <div className="relative">
+                <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                <Input
+                  id="password"
+                  type="password"
+                  placeholder="Enter your password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleUsernameLogin()}
+                  className="pl-10"
+                />
+              </div>
             </div>
 
             <Button
-              type="primary"
-              size="large"
-              block
-              loading={loading}
+              className="w-full"
+              disabled={loading}
               onClick={handleUsernameLogin}
             >
-              Sign In
+              {loading ? 'Signing in...' : 'Sign In'}
             </Button>
 
             <div className="text-center text-sm">
@@ -251,6 +250,7 @@ export default function LoginPage() {
             </div>
           </div>
         )}
+        </CardContent>
       </Card>
     </div>
   );

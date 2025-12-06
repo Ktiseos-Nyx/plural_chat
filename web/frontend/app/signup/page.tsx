@@ -5,12 +5,16 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Input, Button, Card, Alert } from 'antd';
-import { LockOutlined, UserOutlined, MailOutlined } from '@ant-design/icons';
 import { securityAPI, authAPI } from '@/lib/api';
 import { useStore } from '@/lib/store';
 import Link from 'next/link';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Label } from '@/components/ui/label';
+import { Lock, User, Mail, AlertCircle, PartyPopper } from 'lucide-react';
 
 export default function SignupPage() {
   const [username, setUsername] = useState('');
@@ -104,19 +108,16 @@ export default function SignupPage() {
   if (success) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-50 to-blue-50 dark:from-gray-900 dark:to-gray-800 p-4">
-        <Card
-          style={{ width: '100%', maxWidth: 500 }}
-          className="shadow-lg"
-        >
-          <div className="text-center py-8">
-            <div className="text-6xl mb-4">🎉</div>
+        <Card className="w-full max-w-md shadow-lg">
+          <CardContent className="text-center py-8">
+            <PartyPopper className="h-16 w-16 mx-auto mb-4 text-primary" />
             <h1 className="text-2xl font-bold mb-2">
               Account Created!
             </h1>
-            <p className="text-muted-foreground mb-4">
+            <p className="text-muted-foreground">
               Logging you in...
             </p>
-          </div>
+          </CardContent>
         </Card>
       </div>
     );
@@ -127,111 +128,116 @@ export default function SignupPage() {
       <div className="absolute top-4 right-4">
         <ThemeToggle />
       </div>
-      <Card
-        style={{ width: '100%', maxWidth: 500 }}
-        className="shadow-lg"
-      >
-        <div className="text-center mb-6">
-          <h1 className="text-3xl font-bold mb-2">
-            Create Account
-          </h1>
-          <p className="text-muted-foreground">
+      <Card className="w-full max-w-md shadow-lg">
+        <CardHeader className="text-center">
+          <CardTitle className="text-3xl font-bold">Create Account</CardTitle>
+          <CardDescription>
             Join Plural Chat to get started
-          </p>
-        </div>
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {error && (
+            <Alert variant="destructive" className="mb-4">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          )}
 
-        {error && (
-          <Alert
-            message={error}
-            type="error"
-            showIcon
-            closable
-            onClose={() => setError('')}
-            className="mb-4"
-          />
-        )}
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="username">
+                Username <span className="text-red-500">*</span>
+              </Label>
+              <div className="relative">
+                <User className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                <Input
+                  id="username"
+                  type="text"
+                  placeholder="Choose a username"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleSignup()}
+                  className="pl-10"
+                />
+              </div>
+              <p className="text-xs text-muted-foreground">
+                At least 3 characters
+              </p>
+            </div>
 
-        <div className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium mb-2">
-              Username <span className="text-red-500">*</span>
-            </label>
-            <Input
-              size="large"
-              prefix={<UserOutlined />}
-              placeholder="Choose a username"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              onPressEnter={handleSignup}
-            />
-            <div className="text-xs text-muted-foreground mt-1">
-              At least 3 characters
+            <div className="space-y-2">
+              <Label htmlFor="email">
+                Email <span className="text-muted-foreground">(optional)</span>
+              </Label>
+              <div className="relative">
+                <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                <Input
+                  id="email"
+                  type="email"
+                  placeholder="your.email@example.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleSignup()}
+                  className="pl-10"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="password">
+                Password <span className="text-red-500">*</span>
+              </Label>
+              <div className="relative">
+                <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                <Input
+                  id="password"
+                  type="password"
+                  placeholder="Create a password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleSignup()}
+                  className="pl-10"
+                />
+              </div>
+              <p className="text-xs text-muted-foreground">
+                At least 8 characters
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="confirm-password">
+                Confirm Password <span className="text-red-500">*</span>
+              </Label>
+              <div className="relative">
+                <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                <Input
+                  id="confirm-password"
+                  type="password"
+                  placeholder="Confirm your password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleSignup()}
+                  className="pl-10"
+                />
+              </div>
+            </div>
+
+            <Button
+              className="w-full"
+              disabled={loading}
+              onClick={handleSignup}
+            >
+              {loading ? 'Creating Account...' : 'Create Account'}
+            </Button>
+
+            <div className="text-center text-sm">
+              Already have an account?{' '}
+              <Link href="/login" className="text-primary hover:underline font-medium">
+                Sign in
+              </Link>
             </div>
           </div>
-
-          <div>
-            <label className="block text-sm font-medium mb-2">
-              Email <span className="text-muted-foreground">(optional)</span>
-            </label>
-            <Input
-              size="large"
-              prefix={<MailOutlined />}
-              placeholder="your.email@example.com"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              onPressEnter={handleSignup}
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium mb-2">
-              Password <span className="text-red-500">*</span>
-            </label>
-            <Input.Password
-              size="large"
-              prefix={<LockOutlined />}
-              placeholder="Create a password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              onPressEnter={handleSignup}
-            />
-            <div className="text-xs text-muted-foreground mt-1">
-              At least 8 characters
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium mb-2">
-              Confirm Password <span className="text-red-500">*</span>
-            </label>
-            <Input.Password
-              size="large"
-              prefix={<LockOutlined />}
-              placeholder="Confirm your password"
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              onPressEnter={handleSignup}
-            />
-          </div>
-
-          <Button
-            type="primary"
-            size="large"
-            block
-            loading={loading}
-            onClick={handleSignup}
-          >
-            Create Account
-          </Button>
-
-          <div className="text-center text-sm">
-            Already have an account?{' '}
-            <Link href="/login" className="text-primary hover:underline font-medium">
-              Sign in
-            </Link>
-          </div>
-        </div>
+        </CardContent>
       </Card>
     </div>
   );

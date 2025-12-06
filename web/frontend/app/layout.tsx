@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
-import { ConfigProvider } from 'antd';
 import { ThemeProvider } from "@/components/theme-provider";
+import { Toaster } from "@/components/ui/toaster";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -23,16 +23,8 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <body className={`${inter.variable} font-sans antialiased`}>
         <ThemeProvider defaultTheme="dark" storageKey="plural-chat-theme">
-          <ConfigProvider
-            theme={{
-              token: {
-                colorPrimary: '#8b5cf6',
-                borderRadius: 8,
-              },
-            }}
-          >
-            {children}
-          </ConfigProvider>
+          {children}
+          <Toaster />
         </ThemeProvider>
       </body>
     </html>

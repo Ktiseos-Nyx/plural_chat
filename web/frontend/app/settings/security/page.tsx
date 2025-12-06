@@ -6,30 +6,31 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import {
-  Card,
-  Button,
-  Input,
-  Alert,
-  Modal,
-  message,
-  Tag,
-  Space,
-  Divider,
-  Spin,
-} from 'antd';
-import {
-  SafetyOutlined,
-  LockOutlined,
-  CopyOutlined,
-  KeyOutlined,
-  CheckCircleOutlined,
-  CloseCircleOutlined,
-  DownloadOutlined,
-} from '@ant-design/icons';
 import { securityAPI } from '@/lib/api';
 import { copyToClipboard } from '@/lib/utils';
 import Link from 'next/link';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Badge } from '@/components/ui/badge';
+import { Separator } from '@/components/ui/separator';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { useToast } from '@/hooks/use-toast';
+import {
+  Shield,
+  ShieldCheck,
+  ShieldOff,
+  Key,
+  Copy,
+  Download,
+  CheckCircle2,
+  XCircle,
+  Info,
+  AlertCircle,
+  Lock
+} from 'lucide-react';
 
 interface TOTPSetup {
   secret: string;
@@ -39,6 +40,7 @@ interface TOTPSetup {
 
 export default function SecuritySettingsPage() {
   const router = useRouter();
+  const { toast } = useToast();
 
   // 2FA status
   const [is2FAEnabled, setIs2FAEnabled] = useState(false);
@@ -75,7 +77,11 @@ export default function SecuritySettingsPage() {
       setIs2FAEnabled(status.enabled);
       setBackupCodesRemaining(status.backup_codes_remaining);
     } catch (error: any) {
-      message.error('Failed to load 2FA status');
+      toast({
+        title: "Error",
+        description: "Failed to load 2FA status",
+        variant: "destructive",
+      });
       console.error(error);
     } finally {
       setLoading(false);
@@ -89,9 +95,16 @@ export default function SecuritySettingsPage() {
       const data = await securityAPI.setup2FA();
       setSetupData(data);
       setShowSetupModal(true);
-      message.info('Scan the QR code with your authenticator app');
+      toast({
+        title: "QR Code Ready",
+        description: "Scan the QR code with your authenticator app",
+      });
     } catch (error: any) {
-      message.error(error.response?.data?.detail || 'Failed to start 2FA setup');
+      toast({
+        title: "Error",
+        description: error.response?.data?.detail || 'Failed to start 2FA setup',
+        variant: "destructive",
+      });
     } finally {
       setSetupLoading(false);
     }
@@ -100,7 +113,11 @@ export default function SecuritySettingsPage() {
   // Enable 2FA
   const handleEnable2FA = async () => {
     if (!verificationCode.trim()) {
-      message.error('Please enter the verification code');
+      toast({
+        title: "Error",
+        description: "Please enter the verification code",
+        variant: "destructive",
+      });
       return;
     }
 
@@ -108,14 +125,21 @@ export default function SecuritySettingsPage() {
     try {
       const response = await securityAPI.enable2FA(verificationCode.trim());
       if (response.success) {
-        message.success('2FA enabled successfully!');
+        toast({
+          title: "Success",
+          description: "2FA enabled successfully!",
+        });
         setShowSetupModal(false);
         setVerificationCode('');
         setSetupData(null);
-        await loadStatus(); // Reload status
+        await loadStatus();
       }
     } catch (error: any) {
-      message.error(error.response?.data?.detail || 'Failed to enable 2FA');
+      toast({
+        title: "Error",
+        description: error.response?.data?.detail || 'Failed to enable 2FA',
+        variant: "destructive",
+      });
     } finally {
       setSetupLoading(false);
     }
@@ -124,7 +148,11 @@ export default function SecuritySettingsPage() {
   // Disable 2FA
   const handleDisable2FA = async () => {
     if (!disablePassword.trim() && !disableTotpCode.trim()) {
-      message.error('Please enter your password or TOTP code');
+      toast({
+        title: "Error",
+        description: "Please enter your password or TOTP code",
+        variant: "destructive",
+      });
       return;
     }
 
@@ -135,14 +163,21 @@ export default function SecuritySettingsPage() {
         disableTotpCode.trim() || undefined
       );
       if (response.success) {
-        message.success('2FA disabled successfully');
+        toast({
+          title: "Success",
+          description: "2FA disabled successfully",
+        });
         setShowDisableModal(false);
         setDisablePassword('');
         setDisableTotpCode('');
         await loadStatus();
       }
     } catch (error: any) {
-      message.error(error.response?.data?.detail || 'Failed to disable 2FA');
+      toast({
+        title: "Error",
+        description: error.response?.data?.detail || 'Failed to disable 2FA',
+        variant: "destructive",
+      });
     } finally {
       setDisableLoading(false);
     }
@@ -151,7 +186,11 @@ export default function SecuritySettingsPage() {
   // Regenerate backup codes
   const handleRegenerateBackupCodes = async () => {
     if (!regenerateCode.trim()) {
-      message.error('Please enter your authenticator code');
+      toast({
+        title: "Error",
+        description: "Please enter your authenticator code",
+        variant: "destructive",
+      });
       return;
     }
 
@@ -160,11 +199,18 @@ export default function SecuritySettingsPage() {
       const response = await securityAPI.regenerateBackupCodes(regenerateCode.trim());
       if (response.success && response.backup_codes) {
         setNewBackupCodes(response.backup_codes);
-        message.success('Backup codes regenerated successfully');
+        toast({
+          title: "Success",
+          description: "Backup codes regenerated successfully",
+        });
         await loadStatus();
       }
     } catch (error: any) {
-      message.error(error.response?.data?.detail || 'Failed to regenerate backup codes');
+      toast({
+        title: "Error",
+        description: error.response?.data?.detail || 'Failed to regenerate backup codes',
+        variant: "destructive",
+      });
     } finally {
       setRegenerateLoading(false);
     }
@@ -175,9 +221,16 @@ export default function SecuritySettingsPage() {
     const text = codes.join('\n');
     const success = await copyToClipboard(text);
     if (success) {
-      message.success('Backup codes copied to clipboard');
+      toast({
+        title: "Success",
+        description: "Backup codes copied to clipboard",
+      });
     } else {
-      message.error('Failed to copy to clipboard');
+      toast({
+        title: "Error",
+        description: "Failed to copy to clipboard",
+        variant: "destructive",
+      });
     }
   };
 
@@ -193,79 +246,82 @@ export default function SecuritySettingsPage() {
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
-    message.success('Backup codes downloaded');
+    toast({
+      title: "Success",
+      description: "Backup codes downloaded",
+    });
   };
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <Spin size="large" />
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-50 to-blue-50 dark:from-gray-900 dark:to-gray-800">
+        <div className="text-center">
+          <Shield className="h-12 w-12 animate-pulse mx-auto mb-4 text-primary" />
+          <p className="text-muted-foreground">Loading security settings...</p>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 to-blue-50 p-6">
+    <div className="min-h-screen bg-gradient-to-br from-purple-50 to-blue-50 dark:from-gray-900 dark:to-gray-800 p-6">
       <div className="max-w-3xl mx-auto">
         <div className="mb-6">
-          <h1 className="text-3xl font-bold text-gray-800">Security Settings</h1>
-          <p className="text-gray-600 mt-2">Manage two-factor authentication and security</p>
+          <h1 className="text-3xl font-bold">Security Settings</h1>
+          <p className="text-muted-foreground mt-2">Manage two-factor authentication and security</p>
         </div>
 
         <Card>
-          <div className="space-y-6">
-            {/* 2FA Status */}
-            <div>
-              <div className="flex items-center justify-between mb-4">
-                <div>
-                  <h2 className="text-xl font-semibold flex items-center gap-2">
-                    <SafetyOutlined className="text-blue-600" />
-                    Two-Factor Authentication
-                  </h2>
-                  <p className="text-gray-600 mt-1">
-                    Add an extra layer of security to your account
-                  </p>
-                </div>
-                <div>
-                  {is2FAEnabled ? (
-                    <Tag icon={<CheckCircleOutlined />} color="success" className="text-base px-4 py-1">
-                      Enabled
-                    </Tag>
-                  ) : (
-                    <Tag icon={<CloseCircleOutlined />} color="default" className="text-base px-4 py-1">
-                      Disabled
-                    </Tag>
-                  )}
-                </div>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="flex items-center gap-2">
+                  <Shield className="h-5 w-5 text-blue-600" />
+                  Two-Factor Authentication
+                </CardTitle>
+                <CardDescription className="mt-1">
+                  Add an extra layer of security to your account
+                </CardDescription>
               </div>
-
-              <Alert
-                message="What is Two-Factor Authentication?"
-                description="2FA adds an extra layer of security by requiring a code from your authenticator app (like Google Authenticator or Authy) in addition to your password when logging in."
-                type="info"
-                showIcon
-                className="mb-4"
-              />
+              <div>
+                {is2FAEnabled ? (
+                  <Badge variant="default" className="bg-green-600 gap-1">
+                    <CheckCircle2 className="h-3 w-3" />
+                    Enabled
+                  </Badge>
+                ) : (
+                  <Badge variant="secondary" className="gap-1">
+                    <XCircle className="h-3 w-3" />
+                    Disabled
+                  </Badge>
+                )}
+              </div>
             </div>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <Alert>
+              <Info className="h-4 w-4" />
+              <AlertDescription>
+                2FA adds an extra layer of security by requiring a code from your authenticator app (like Google Authenticator or Authy) in addition to your password when logging in.
+              </AlertDescription>
+            </Alert>
 
-            <Divider />
+            <Separator />
 
             {/* If 2FA is disabled - show enable option */}
             {!is2FAEnabled && (
               <div className="text-center py-8">
-                <SafetyOutlined className="text-6xl text-blue-500 mb-4" />
+                <ShieldOff className="h-16 w-16 text-blue-500 mx-auto mb-4" />
                 <h3 className="text-lg font-semibold mb-2">Enable Two-Factor Authentication</h3>
-                <p className="text-gray-600 mb-6">
+                <p className="text-muted-foreground mb-6">
                   Protect your account with TOTP-based authentication
                 </p>
                 <Button
-                  type="primary"
-                  size="large"
-                  icon={<SafetyOutlined />}
                   onClick={handleStartSetup}
-                  loading={setupLoading}
+                  disabled={setupLoading}
                 >
-                  Enable 2FA
+                  <Shield className="h-4 w-4 mr-2" />
+                  {setupLoading ? 'Setting up...' : 'Enable 2FA'}
                 </Button>
               </div>
             )}
@@ -273,363 +329,336 @@ export default function SecuritySettingsPage() {
             {/* If 2FA is enabled - show management options */}
             {is2FAEnabled && (
               <div className="space-y-4">
-                <Card className="bg-green-50 border-green-200">
-                  <div className="flex items-center gap-3">
-                    <CheckCircleOutlined className="text-3xl text-green-600" />
-                    <div>
-                      <h3 className="text-lg font-semibold text-green-900">
-                        Two-Factor Authentication is Active
-                      </h3>
-                      <p className="text-green-700">
-                        Your account is protected with TOTP-based authentication
-                      </p>
+                <Card className="bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-800">
+                  <CardContent className="pt-6">
+                    <div className="flex items-center gap-3">
+                      <CheckCircle2 className="h-8 w-8 text-green-600" />
+                      <div>
+                        <h3 className="text-lg font-semibold text-green-900 dark:text-green-100">
+                          Two-Factor Authentication is Active
+                        </h3>
+                        <p className="text-green-700 dark:text-green-300">
+                          Your account is protected with TOTP-based authentication
+                        </p>
+                      </div>
                     </div>
-                  </div>
+                  </CardContent>
                 </Card>
 
-                <Card className="bg-gray-50">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h3 className="text-lg font-semibold mb-1 flex items-center gap-2">
-                        <KeyOutlined />
-                        Backup Codes
-                      </h3>
-                      <p className="text-gray-600">
-                        {backupCodesRemaining} backup code{backupCodesRemaining !== 1 ? 's' : ''} remaining
-                      </p>
+                <Card className="bg-muted/50">
+                  <CardContent className="pt-6">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h3 className="text-lg font-semibold mb-1 flex items-center gap-2">
+                          <Key className="h-5 w-5" />
+                          Backup Codes
+                        </h3>
+                        <p className="text-muted-foreground">
+                          {backupCodesRemaining} backup code{backupCodesRemaining !== 1 ? 's' : ''} remaining
+                        </p>
+                      </div>
+                      <Button
+                        variant="outline"
+                        onClick={() => setShowRegenerateModal(true)}
+                      >
+                        Regenerate Codes
+                      </Button>
                     </div>
-                    <Button
-                      icon={<KeyOutlined />}
-                      onClick={() => {
-                        setShowRegenerateModal(true);
-                        setNewBackupCodes([]);
-                        setRegenerateCode('');
-                      }}
-                    >
-                      Regenerate Codes
-                    </Button>
-                  </div>
-                  {backupCodesRemaining === 0 && (
-                    <Alert
-                      message="No backup codes remaining"
-                      description="You should regenerate backup codes in case you lose access to your authenticator app."
-                      type="warning"
-                      showIcon
-                      className="mt-4"
-                    />
-                  )}
+                    {backupCodesRemaining < 3 && (
+                      <Alert variant="destructive" className="mt-4">
+                        <AlertCircle className="h-4 w-4" />
+                        <AlertDescription>
+                          You're running low on backup codes. Consider regenerating them.
+                        </AlertDescription>
+                      </Alert>
+                    )}
+                  </CardContent>
                 </Card>
 
-                <Card className="bg-red-50 border-red-200">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h3 className="text-lg font-semibold text-red-900 mb-1">Disable 2FA</h3>
-                      <p className="text-red-700">
-                        Remove two-factor authentication from your account
-                      </p>
-                    </div>
-                    <Button
-                      danger
-                      icon={<CloseCircleOutlined />}
-                      onClick={() => {
-                        setShowDisableModal(true);
-                        setDisablePassword('');
-                        setDisableTotpCode('');
-                      }}
-                    >
-                      Disable 2FA
-                    </Button>
-                  </div>
-                </Card>
+                <div className="flex justify-center pt-4">
+                  <Button
+                    variant="destructive"
+                    onClick={() => setShowDisableModal(true)}
+                  >
+                    <ShieldOff className="h-4 w-4 mr-2" />
+                    Disable 2FA
+                  </Button>
+                </div>
               </div>
             )}
-          </div>
+          </CardContent>
         </Card>
 
         <div className="mt-6 text-center">
-          <Link href="/settings" className="text-blue-600 hover:underline">
+          <Link href="/settings" className="text-primary hover:underline">
             ← Back to Settings
           </Link>
         </div>
       </div>
 
       {/* Setup 2FA Modal */}
-      <Modal
-        title="Enable Two-Factor Authentication"
-        open={showSetupModal}
-        onCancel={() => {
-          setShowSetupModal(false);
-          setSetupData(null);
-          setVerificationCode('');
-        }}
-        footer={null}
-        width={600}
-      >
-        {setupData && (
-          <div className="space-y-6">
-            <div>
-              <h3 className="font-semibold mb-3">Step 1: Scan QR Code</h3>
-              <p className="text-gray-600 mb-4">
-                Open your authenticator app (Google Authenticator, Authy, etc.) and scan this QR code:
-              </p>
-              <div className="text-center bg-white p-4 rounded-lg">
+      <Dialog open={showSetupModal} onOpenChange={setShowSetupModal}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Enable Two-Factor Authentication</DialogTitle>
+            <DialogDescription>
+              Scan the QR code with your authenticator app
+            </DialogDescription>
+          </DialogHeader>
+
+          {setupData && (
+            <div className="space-y-4">
+              {/* QR Code */}
+              <div className="flex justify-center p-4 bg-white rounded-lg">
                 <img
                   src={setupData.qr_code}
                   alt="2FA QR Code"
-                  className="mx-auto"
-                  style={{ width: 256, height: 256 }}
+                  className="w-48 h-48"
+                />
+              </div>
+
+              {/* Manual Entry */}
+              <div className="space-y-2">
+                <Label>Or enter this code manually:</Label>
+                <div className="flex gap-2">
+                  <Input
+                    value={setupData.secret}
+                    readOnly
+                    className="font-mono text-sm"
+                  />
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() => {
+                      copyToClipboard(setupData.secret);
+                      toast({
+                        title: "Copied",
+                        description: "Secret key copied to clipboard",
+                      });
+                    }}
+                  >
+                    <Copy className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+
+              {/* Backup Codes */}
+              <div className="space-y-2">
+                <Label>Save these backup codes:</Label>
+                <div className="bg-muted p-3 rounded-lg font-mono text-sm space-y-1">
+                  {setupData.backup_codes.map((code, idx) => (
+                    <div key={idx}>{code}</div>
+                  ))}
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleCopyBackupCodes(setupData.backup_codes)}
+                    className="flex-1"
+                  >
+                    <Copy className="h-4 w-4 mr-2" />
+                    Copy Codes
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleDownloadBackupCodes(setupData.backup_codes)}
+                    className="flex-1"
+                  >
+                    <Download className="h-4 w-4 mr-2" />
+                    Download
+                  </Button>
+                </div>
+              </div>
+
+              {/* Verification Code */}
+              <div className="space-y-2">
+                <Label htmlFor="verification-code">Enter verification code:</Label>
+                <Input
+                  id="verification-code"
+                  type="text"
+                  placeholder="000000"
+                  maxLength={6}
+                  value={verificationCode}
+                  onChange={(e) => setVerificationCode(e.target.value)}
+                />
+              </div>
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowSetupModal(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleEnable2FA} disabled={setupLoading}>
+              {setupLoading ? 'Enabling...' : 'Enable 2FA'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Disable 2FA Modal */}
+      <Dialog open={showDisableModal} onOpenChange={setShowDisableModal}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Disable Two-Factor Authentication</DialogTitle>
+            <DialogDescription>
+              Enter your password or authenticator code to disable 2FA
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <Alert variant="destructive">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>
+                Disabling 2FA will make your account less secure
+              </AlertDescription>
+            </Alert>
+
+            <div className="space-y-2">
+              <Label htmlFor="disable-password">Password</Label>
+              <div className="relative">
+                <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                <Input
+                  id="disable-password"
+                  type="password"
+                  placeholder="Enter your password"
+                  value={disablePassword}
+                  onChange={(e) => setDisablePassword(e.target.value)}
+                  className="pl-10"
                 />
               </div>
             </div>
 
-            <div>
-              <h3 className="font-semibold mb-3">Step 2: Verify Code</h3>
-              <p className="text-gray-600 mb-3">
-                Enter the 6-digit code from your authenticator app:
-              </p>
-              <Input
-                size="large"
-                prefix={<SafetyOutlined />}
-                placeholder="000000"
-                maxLength={6}
-                value={verificationCode}
-                onChange={(e) => setVerificationCode(e.target.value)}
-                onPressEnter={handleEnable2FA}
-              />
-            </div>
+            <p className="text-center text-sm text-muted-foreground">OR</p>
 
-            <div>
-              <h3 className="font-semibold mb-3">Step 3: Save Backup Codes</h3>
-              <Alert
-                message="Important!"
-                description="Save these backup codes in a safe place. You can use them to access your account if you lose your authenticator device."
-                type="warning"
-                showIcon
-                className="mb-3"
-              />
-              <div className="grid grid-cols-2 gap-2 mb-4">
-                {setupData.backup_codes.map((code, i) => (
-                  <Tag key={i} className="font-mono text-base py-1 text-center">
-                    {code}
-                  </Tag>
-                ))}
+            <div className="space-y-2">
+              <Label htmlFor="disable-totp">Authenticator Code</Label>
+              <div className="relative">
+                <Shield className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                <Input
+                  id="disable-totp"
+                  type="text"
+                  placeholder="000000"
+                  maxLength={6}
+                  value={disableTotpCode}
+                  onChange={(e) => setDisableTotpCode(e.target.value)}
+                  className="pl-10"
+                />
               </div>
-              <Space>
-                <Button
-                  icon={<CopyOutlined />}
-                  onClick={() => handleCopyBackupCodes(setupData.backup_codes)}
-                >
-                  Copy All Codes
-                </Button>
-                <Button
-                  icon={<DownloadOutlined />}
-                  onClick={() => handleDownloadBackupCodes(setupData.backup_codes)}
-                >
-                  Download as File
-                </Button>
-              </Space>
-            </div>
-
-            <Divider />
-
-            <div className="flex justify-end gap-2">
-              <Button
-                onClick={() => {
-                  setShowSetupModal(false);
-                  setSetupData(null);
-                  setVerificationCode('');
-                }}
-              >
-                Cancel
-              </Button>
-              <Button
-                type="primary"
-                onClick={handleEnable2FA}
-                loading={setupLoading}
-                disabled={verificationCode.length !== 6}
-              >
-                Enable 2FA
-              </Button>
             </div>
           </div>
-        )}
-      </Modal>
 
-      {/* Disable 2FA Modal */}
-      <Modal
-        title="Disable Two-Factor Authentication"
-        open={showDisableModal}
-        onCancel={() => {
-          setShowDisableModal(false);
-          setDisablePassword('');
-          setDisableTotpCode('');
-        }}
-        footer={null}
-      >
-        <div className="space-y-4">
-          <Alert
-            message="Warning"
-            description="Disabling 2FA will make your account less secure. You'll only need your password to log in."
-            type="warning"
-            showIcon
-          />
-
-          <div>
-            <label className="block text-sm font-medium mb-2">Your Password</label>
-            <Input.Password
-              size="large"
-              prefix={<LockOutlined />}
-              placeholder="Enter your password"
-              value={disablePassword}
-              onChange={(e) => {
-                setDisablePassword(e.target.value);
-                setDisableTotpCode('');
-              }}
-            />
-          </div>
-
-          <div className="text-center text-gray-500">OR</div>
-
-          <div>
-            <label className="block text-sm font-medium mb-2">Authenticator Code</label>
-            <Input
-              size="large"
-              prefix={<SafetyOutlined />}
-              placeholder="000000"
-              maxLength={6}
-              value={disableTotpCode}
-              onChange={(e) => {
-                setDisableTotpCode(e.target.value);
-                setDisablePassword('');
-              }}
-            />
-          </div>
-
-          <div className="flex justify-end gap-2 mt-6">
-            <Button
-              onClick={() => {
-                setShowDisableModal(false);
-                setDisablePassword('');
-                setDisableTotpCode('');
-              }}
-            >
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowDisableModal(false)}>
               Cancel
             </Button>
             <Button
-              danger
-              type="primary"
+              variant="destructive"
               onClick={handleDisable2FA}
-              loading={disableLoading}
+              disabled={disableLoading}
             >
-              Disable 2FA
+              {disableLoading ? 'Disabling...' : 'Disable 2FA'}
             </Button>
-          </div>
-        </div>
-      </Modal>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Regenerate Backup Codes Modal */}
-      <Modal
-        title="Regenerate Backup Codes"
-        open={showRegenerateModal}
-        onCancel={() => {
-          setShowRegenerateModal(false);
-          setRegenerateCode('');
-          setNewBackupCodes([]);
-        }}
-        footer={null}
-      >
-        <div className="space-y-4">
-          {newBackupCodes.length === 0 ? (
-            <>
-              <Alert
-                message="Warning"
-                description="Regenerating backup codes will invalidate all existing codes. Make sure to save the new codes."
-                type="warning"
-                showIcon
-              />
+      <Dialog open={showRegenerateModal} onOpenChange={setShowRegenerateModal}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Regenerate Backup Codes</DialogTitle>
+            <DialogDescription>
+              This will invalidate your existing backup codes
+            </DialogDescription>
+          </DialogHeader>
 
-              <div>
-                <label className="block text-sm font-medium mb-2">
-                  Enter your authenticator code to continue
-                </label>
-                <Input
-                  size="large"
-                  prefix={<SafetyOutlined />}
-                  placeholder="000000"
-                  maxLength={6}
-                  value={regenerateCode}
-                  onChange={(e) => setRegenerateCode(e.target.value)}
-                  onPressEnter={handleRegenerateBackupCodes}
-                />
-              </div>
+          <div className="space-y-4">
+            {newBackupCodes.length === 0 ? (
+              <>
+                <Alert>
+                  <Info className="h-4 w-4" />
+                  <AlertDescription>
+                    Enter your authenticator code to generate new backup codes
+                  </AlertDescription>
+                </Alert>
 
-              <div className="flex justify-end gap-2">
-                <Button
-                  onClick={() => {
-                    setShowRegenerateModal(false);
-                    setRegenerateCode('');
-                  }}
-                >
+                <div className="space-y-2">
+                  <Label htmlFor="regenerate-code">Authenticator Code</Label>
+                  <Input
+                    id="regenerate-code"
+                    type="text"
+                    placeholder="000000"
+                    maxLength={6}
+                    value={regenerateCode}
+                    onChange={(e) => setRegenerateCode(e.target.value)}
+                  />
+                </div>
+              </>
+            ) : (
+              <>
+                <Alert>
+                  <CheckCircle2 className="h-4 w-4" />
+                  <AlertDescription>
+                    New backup codes generated! Save these codes securely.
+                  </AlertDescription>
+                </Alert>
+
+                <div className="bg-muted p-3 rounded-lg font-mono text-sm space-y-1">
+                  {newBackupCodes.map((code, idx) => (
+                    <div key={idx}>{code}</div>
+                  ))}
+                </div>
+
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    onClick={() => handleCopyBackupCodes(newBackupCodes)}
+                    className="flex-1"
+                  >
+                    <Copy className="h-4 w-4 mr-2" />
+                    Copy Codes
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => handleDownloadBackupCodes(newBackupCodes)}
+                    className="flex-1"
+                  >
+                    <Download className="h-4 w-4 mr-2" />
+                    Download
+                  </Button>
+                </div>
+              </>
+            )}
+          </div>
+
+          <DialogFooter>
+            {newBackupCodes.length === 0 ? (
+              <>
+                <Button variant="outline" onClick={() => setShowRegenerateModal(false)}>
                   Cancel
                 </Button>
                 <Button
-                  type="primary"
                   onClick={handleRegenerateBackupCodes}
-                  loading={regenerateLoading}
-                  disabled={regenerateCode.length !== 6}
+                  disabled={regenerateLoading}
                 >
-                  Regenerate Codes
+                  {regenerateLoading ? 'Regenerating...' : 'Regenerate Codes'}
                 </Button>
-              </div>
-            </>
-          ) : (
-            <>
-              <Alert
-                message="New Backup Codes Generated"
-                description="Save these codes in a safe place. The old codes are no longer valid."
-                type="success"
-                showIcon
-              />
-
-              <div className="grid grid-cols-2 gap-2">
-                {newBackupCodes.map((code, i) => (
-                  <Tag key={i} className="font-mono text-base py-1 text-center">
-                    {code}
-                  </Tag>
-                ))}
-              </div>
-
-              <Space>
-                <Button
-                  icon={<CopyOutlined />}
-                  onClick={() => handleCopyBackupCodes(newBackupCodes)}
-                >
-                  Copy All Codes
-                </Button>
-                <Button
-                  icon={<DownloadOutlined />}
-                  onClick={() => handleDownloadBackupCodes(newBackupCodes)}
-                >
-                  Download as File
-                </Button>
-              </Space>
-
-              <div className="flex justify-end">
-                <Button
-                  type="primary"
-                  onClick={() => {
-                    setShowRegenerateModal(false);
-                    setRegenerateCode('');
-                    setNewBackupCodes([]);
-                  }}
-                >
-                  Done
-                </Button>
-              </div>
-            </>
-          )}
-        </div>
-      </Modal>
+              </>
+            ) : (
+              <Button onClick={() => {
+                setShowRegenerateModal(false);
+                setNewBackupCodes([]);
+                setRegenerateCode('');
+              }}>
+                Done
+              </Button>
+            )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
