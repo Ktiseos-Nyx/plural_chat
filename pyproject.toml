@@ -40,15 +40,5 @@ plural-chat = "main:main"
 requires = ["setuptools>=45", "wheel"]
 build-backend = "setuptools.build_meta"
 
-[tool.setuptools]
-py-modules = [
-    "main", 
-    "member_manager", 
-    "settings_manager", 
-    "database_manager",
-    "pluralkit_api",
-    "pluralkit_dialog", 
-    "pk_export_parser",
-    "about_dialog",
-    "help_dialog"
-]
+[tool.setuptools.packages.find]
+where = ["."]
