@@ -71,27 +71,44 @@ A desktop chat application designed specifically for plural systems, featuring P
 
 ### Installation
 
-1. **Clone or download** this repository
-   ```bash
-   https://github.com/Ktiseos-Nyx/plural_chat.git
-   ```
-3. **Install:**
-   ```bash
-     cd plural_chat
-     pip install .
-   ```
-4. **Run the application:**
-   ```bash
-   plural-chat
-   ```
-#### Developer Mode Options
+1.  **Clone the Repository**
+    ```bash
+    git clone https://github.com/Ktiseos-Nyx/plural_chat.git
+    cd plural_chat
+    ```
 
-   ```bash
-  git clone https://github.com/Ktiseos-Nyx/plural_chat.git
-  cd plural_chat
-  pip install -e .
-  plural-chat
-   ```
+2.  **Install the Application**
+    ```bash
+    pip install .
+    ```
+    > **Note:** For development, use `pip install -e .` to install in "editable" mode.
+
+3.  **Run the Application**
+    ```bash
+    plural-chat
+    ```
+
+### 🐧 A Note for Linux Users (`externally-managed-environment`)
+
+Some newer Linux distributions (like Ubuntu 23.04+, Debian 12+, and their derivatives) protect their system Python installation. If you see an `error: externally-managed-environment` when running `pip install`, you **must** use a virtual environment. This is the standard best practice for Python development on all operating systems.
+
+**1. Create and Activate a Virtual Environment**
+Before the installation step, create an isolated environment:
+```bash
+# Inside the plural_chat directory
+python3 -m venv .venv
+
+# Activate it (you must do this every time you open a new terminal)
+source .venv/bin/activate
+```
+
+**2. Install and Run**
+Now that your prompt shows `(.venv)`, you can proceed with the installation and running the app as described above:
+```bash
+pip install .
+plural-chat
+```
+When you are finished, you can leave the environment by typing `deactivate`.
 
 ### First Time Setup
 
