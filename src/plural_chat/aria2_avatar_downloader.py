@@ -125,14 +125,18 @@ class Aria2AvatarDownloader:
             process = subprocess.Popen(aria2_cmd, stdout=subprocess.PIPE, 
                                      stderr=subprocess.STDOUT, text=True)
             
-            # Monitor progress
+            # Monitor progress with rate limiting
+            last_update_time = time.time()
             while process.poll() is None:
-                time.sleep(0.5)
-                if self.status_callback:
-                    elapsed = time.time() - start_time
-                    # Estimate progress based on time (aria2 is usually very fast)
-                    progress = min(30 + (elapsed * 10), 80)  # Progress from 30-80%
-                    self.status_callback("running", f"aria2 downloading... ({elapsed:.1f}s)", int(progress))
+                current_time = time.time()
+                if current_time - last_update_time >= 1.0:  # At least 1 second between updates
+                    if self.status_callback:
+                        elapsed = time.time() - start_time
+                        # Estimate progress based on time (aria2 is usually very fast)
+                        progress = min(30 + (elapsed * 10), 80)  # Progress from 30-80%
+                        self.status_callback("running", f"aria2 downloading... ({elapsed:.1f}s)", int(progress))
+                    last_update_time = current_time
+                time.sleep(0.1)  # Small sleep to prevent busy waiting
             
             # Get final output
             stdout, _ = process.communicate()

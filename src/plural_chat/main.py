@@ -19,6 +19,7 @@ import threading
 import time
 from pathlib import Path
 import platformdirs
+from functools import wraps
 
 from .member_manager import MemberManager
 from .settings_manager import SettingsManager
@@ -47,7 +48,7 @@ class PluralChat:
         self.system_db = SystemDatabase()
         self.pk_sync = PluralKitSync(self.system_db, self.app_db)
 
-        
+
 
         # Migrate existing JSON data if needed
         self.migrate_json_data()
@@ -88,8 +89,11 @@ class PluralChat:
         self.logger.info(f"Using theme: {saved_theme}")
         self.logger.info("Theme manager initialized.")
 
+        # Initialize caches with size limits to prevent memory issues
         self.avatar_cache = {}
         self.thumbnail_cache = {}
+        # Get max cache size from settings, default to 100
+        self.max_cache_size = int(self.app_db.get_setting('max_avatar_cache_size', '100'))
 
         # Set minimum size and center the window
         self.root.minsize(800, 600)
@@ -114,11 +118,13 @@ class PluralChat:
         self.load_font_settings()  # Load font settings after UI is created
 
         # Apply the correct theme after UI is created
-        self.change_theme(theme)
+        # Only apply if it's different from the fallback theme
+        if theme != fallback_theme:
+            self.change_theme(theme)
 
         self.load_members()
         self.load_chat_history()
-        
+
         # Set personalized greeting in status bar
         self.update_status_greeting()
 
@@ -182,7 +188,7 @@ class PluralChat:
                   bootstyle="danger-outline").pack(side=RIGHT)
 
         # Content area with paned window
-        content_paned = ttk.PanedWindow(main_frame, orient=HORIZONTAL)
+        content_paned = ttk.Panedwindow(main_frame, orient=HORIZONTAL)
         content_paned.pack(fill=BOTH, expand=True, pady=(0, 10))
 
         # Status bar (needed for components)
@@ -201,7 +207,8 @@ class PluralChat:
             thumbnail_cache=self.thumbnail_cache,
             selection_callback=self.on_member_selected_from_list,
             system_db=self.system_db,
-            status_bar=self.status_bar
+            status_bar=self.status_bar,
+            app_db=self.app_db  # Pass database access for settings
         )
 
         # Right panel - Chat area
@@ -321,15 +328,15 @@ class PluralChat:
         """Pre-load all local avatar files into cache for instant chat display"""
         if not hasattr(self, 'avatar_references'):
             self.avatar_references = []
-            
+
         for member in self.members:
             member_name = member.get('name', 'Unknown')
             avatar_path = member.get('avatar_path', '')
-            
+
             # Skip if already in cache or no avatar
             if member_name in self.avatar_cache or not avatar_path:
                 continue
-                
+
             # Only load local files (not URLs)
             if not avatar_path.startswith(('http://', 'https://')):
                 try:
@@ -345,7 +352,7 @@ class PluralChat:
                             # Or it might be a relative path from the old data structure, now in the user data dir
                             data_dir = Path(platformdirs.user_data_dir("PluralChat", "DuskfallCrew"))
                             path_to_open = data_dir / "avatars" / avatar_path
-                    
+
                     if not Path(path_to_open).exists():
                         self.logger.warning(f"Avatar file not found for {member_name} at {path_to_open}")
                         continue
@@ -354,12 +361,15 @@ class PluralChat:
                     img = Image.open(path_to_open).resize((30, 30), Image.Resampling.LANCZOS)
                     avatar_image = ImageTk.PhotoImage(img)
                     self.avatar_cache[member_name] = avatar_image
-                    
+
                     # Keep reference to prevent garbage collection
                     self.avatar_references.append(avatar_image)
                     
+                    # Manage cache size to prevent memory issues
+                    self._manage_cache_size(self.avatar_cache, self.max_cache_size)
+
                     self.logger.info(f"Pre-loaded avatar for {member_name}")
-                    
+
                 except Exception as e:
                     self.logger.warning(f"Failed to pre-load avatar for {member_name}: {e}")
 
@@ -375,22 +385,22 @@ class PluralChat:
         try:
             # Check if personalized greeting is enabled (default to True for existing users)
             greeting_enabled = self.app_db.get_setting('personalized_greeting', True)
-            
+
             if not greeting_enabled:
                 self.status_bar.config(text="Ready")
                 return
-                
+
             # Get system name from database
             system_name = self.system_db.get_system_info("system_name", "")
-            
+
             # If no system name, use a generic greeting
             if not system_name or system_name.strip() == "":
                 self.status_bar.config(text="Ready")
                 return
-            
+
             # Get current time for time-based greeting
             current_hour = datetime.now().hour
-            
+
             # Determine time of day
             if 5 <= current_hour < 12:
                 time_of_day = "morning"
@@ -400,18 +410,18 @@ class PluralChat:
                 time_of_day = "evening"
             else:
                 time_of_day = "night"
-            
+
             # Create personalized greeting
             greeting = f"Hello {system_name}! Having a nice {time_of_day}?"
             self.status_bar.config(text=greeting)
-            
+
             self.logger.info(f"Status greeting set: {greeting}")
-            
+
         except Exception as e:
             self.logger.error(f"Error updating status greeting: {e}")
             self.status_bar.config(text="Ready")
 
-    
+
 
     def on_member_change(self, event=None):
         selected_name = self.member_var.get()
@@ -649,10 +659,15 @@ class PluralChat:
                 return
 
             # Create avatars directory if it doesn't exist
-            data_dir = Path(platformdirs.user_data_dir("PluralChat", "DuskfallCrew"))
-            avatars_dir = data_dir / "avatars"
-            avatars_dir.mkdir(parents=True, exist_ok=True)
-            self.logger.info(f"Ensured avatars directory exists at {avatars_dir}")
+            try:
+                data_dir = Path(platformdirs.user_data_dir("PluralChat", "DuskfallCrew"))
+                avatars_dir = data_dir / "avatars"
+                avatars_dir.mkdir(parents=True, exist_ok=True)
+                self.logger.info(f"Ensured avatars directory exists at {avatars_dir}")
+            except Exception as e:
+                self.logger.error(f"Failed to create avatars directory: {e}")
+                self.status_bar.config(text=f"Error creating avatars directory: {e}")
+                return
 
             # 🔒 SECURITY: Generate safe local filename
             member_id = member.get('id') or member.get('pk_id', 'unknown')
@@ -674,8 +689,8 @@ class PluralChat:
             self.status_bar.config(text=f"Downloading avatar for {member_name}...")
 
             try:
-                # Download the image
-                response = requests.get(avatar_path, timeout=10)
+                # Download the image with better error handling
+                response = requests.get(avatar_path, timeout=30)  # Increased timeout
                 response.raise_for_status()
                 self.logger.info(f"Downloaded {len(response.content)} bytes from server")
 
@@ -748,6 +763,10 @@ class PluralChat:
                     if not hasattr(self, 'avatar_references'):
                         self.avatar_references = []
                     self.avatar_references.append(avatar_image)
+                    
+                    # Manage cache size to prevent memory issues
+                    self._manage_cache_size(self.avatar_cache, self.max_cache_size)
+                    
                     self.logger.info(f"Avatar cache updated successfully")
                 except Exception as cache_e:
                     self.logger.warning(f"Failed to update avatar cache: {cache_e}")
@@ -756,17 +775,27 @@ class PluralChat:
                 self.status_bar.config(text=f"Avatar downloaded for {member['name']} ({savings:.0f}% savings)")
 
                 # Update just this member's entry with the new thumbnail
-                self.member_list_component.update_single_member_thumbnail(member)
+                if hasattr(self, 'member_list_component'):
+                    self.member_list_component.update_single_member_thumbnail(member)
 
+            except requests.exceptions.Timeout:
+                self.logger.error(f"Timeout downloading avatar for {member['name']}: {avatar_path}")
+                self.status_bar.config(text=f"Timeout downloading avatar for {member['name']}")
+            except requests.exceptions.RequestException as e:
+                self.logger.error(f"Network error downloading avatar for {member['name']}: {e}")
+                self.status_bar.config(text=f"Network error downloading avatar for {member['name']}")
+            except IOError as e:
+                self.logger.error(f"Image processing error for {member['name']}: {e}")
+                self.status_bar.config(text=f"Image processing error for {member['name']}")
             except Exception as e:
-                self.logger.error(f"Failed to download avatar for {member['name']}: {e}")
-                self.status_bar.config(text=f"Failed to download avatar for {member['name']}")
+                self.logger.error(f"Unexpected error downloading avatar for {member['name']}: {e}")
+                self.status_bar.config(text=f"Error downloading avatar for {member['name']}")
         else:
             self.logger.info(f"Avatar is local file or empty, skipping download")
             # But we still need to load local files into the avatar cache!
             avatar_path = member.get('avatar_path', '')
             member_name = member.get('name', 'Unknown')
-            
+
             if avatar_path and not avatar_path.startswith(('http://', 'https://')):
                 try:
                     # Load local avatar into cache if not already there
@@ -774,19 +803,27 @@ class PluralChat:
                         img = Image.open(avatar_path).resize((30, 30), Image.Resampling.LANCZOS)
                         avatar_image = ImageTk.PhotoImage(img)
                         self.avatar_cache[member_name] = avatar_image
-                        
+
                         # Ensure strong reference is kept to prevent garbage collection
                         if not hasattr(self, 'avatar_references'):
                             self.avatar_references = []
                         self.avatar_references.append(avatar_image)
                         
+                        # Manage cache size to prevent memory issues
+                        self._manage_cache_size(self.avatar_cache, self.max_cache_size)
+
                         self.logger.info(f"Loaded local avatar for {member_name} into cache")
-                        
+
                         # Update the member list thumbnail too
-                        self.member_list_component.update_single_member_thumbnail(member)
-                        
+                        if hasattr(self, 'member_list_component'):
+                            self.member_list_component.update_single_member_thumbnail(member)
+
+                except FileNotFoundError:
+                    self.logger.warning(f"Avatar file not found for {member_name}: {avatar_path}")
+                except IOError as e:
+                    self.logger.warning(f"Error loading avatar file for {member_name}: {e}")
                 except Exception as e:
-                    self.logger.warning(f"Failed to load local avatar for {member_name}: {e}")
+                    self.logger.warning(f"Unexpected error loading avatar for {member_name}: {e}")
 
     def save_members(self):
         # No longer needed - database auto-saves
@@ -964,6 +1001,12 @@ class PluralChat:
 
     def refresh_members(self):
         """Refresh member list after PluralKit sync"""
+        # Clear avatar cache to prevent memory buildup during refresh
+        if hasattr(self, 'avatar_cache'):
+            self.avatar_cache.clear()
+        if hasattr(self, 'avatar_references'):
+            self.avatar_references.clear()
+        
         self.load_members()
         # After refreshing members, ensure the member selector is updated
         member_names = [member['name'] for member in self.members]
@@ -976,7 +1019,7 @@ class PluralChat:
         else:
             self.member_selector.set("")
             self.current_member = None
-            
+
         # Update personalized greeting with new system name
         self.update_status_greeting()
 
@@ -1127,7 +1170,7 @@ class PluralChat:
                     # Refresh UI
                     self.load_members()
                     self.load_chat_history()
-                    
+
                     # Update personalized greeting with new system name
                     self.update_status_greeting()
 
@@ -1150,6 +1193,41 @@ class PluralChat:
                                        f"Supported formats:\n"
                                        f"- PluralKit exports\n"
                                        f"- Our own export format")
+
+    def _manage_cache_size(self, cache_dict, max_size=None):
+        """Remove oldest entries from cache if it exceeds max_size"""
+        # If max_size is not provided, get from settings
+        if max_size is None:
+            max_size = int(self.app_db.get_setting('max_avatar_cache_size', '100'))
+        
+        if len(cache_dict) > max_size and max_size > 0:  # Only manage size if limit > 0
+            # Remove oldest entries (first ones added) - this is approximate since dict order is insertion order
+            excess = len(cache_dict) - max_size
+            keys_to_remove = list(cache_dict.keys())[:excess]
+            for key in keys_to_remove:
+                del cache_dict[key]
+
+    def retry_on_failure(self, max_retries=3, delay=1, backoff=2, exceptions=(Exception,)):
+        """
+        Retry decorator for network operations
+        """
+        def decorator(func):
+            @wraps(func)
+            def wrapper(*args, **kwargs):
+                current_delay = delay
+                for attempt in range(max_retries):
+                    try:
+                        return func(*args, **kwargs)
+                    except exceptions as e:
+                        if attempt == max_retries - 1:  # Last attempt
+                            self.logger.error(f"Function {func.__name__} failed after {max_retries} attempts: {e}")
+                            raise e
+                        self.logger.warning(f"Attempt {attempt + 1} failed for {func.__name__}: {e}. Retrying in {current_delay}s...")
+                        time.sleep(current_delay)
+                        current_delay *= backoff
+                return None
+            return wrapper
+        return decorator
 
     def run(self):
         self.root.mainloop()

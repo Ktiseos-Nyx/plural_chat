@@ -13,7 +13,7 @@ class SettingsManager(ttk.Toplevel):
         self.parent = parent_app
 
         self.title("Settings")
-        self.geometry("600x450")
+        self.geometry("600x550")  # Increased height to accommodate cache settings
         self.transient(parent_window) # Keep this window on top of the main window
 
         # Create a Notebook (tabbed interface)
@@ -138,6 +138,28 @@ class SettingsManager(ttk.Toplevel):
         )
         greeting_desc.pack(anchor=tk.W, pady=(2, 0))
 
+        # Cache Settings
+        ttk.Label(general_frame, text="Cache Settings:").pack(anchor=tk.W, pady=(15, 5))
+        cache_frame = ttk.Frame(general_frame)
+        cache_frame.pack(fill=tk.X, pady=(0, 10))
+        
+        # Cache size setting
+        ttk.Label(cache_frame, text="Max Avatar Cache Size:").pack(anchor=tk.W, pady=(0, 5))
+        cache_size_frame = ttk.Frame(cache_frame)
+        cache_size_frame.pack(fill=tk.X)
+        
+        self.cache_size_var = tk.StringVar()
+        self.cache_size_entry = ttk.Entry(cache_size_frame, textvariable=self.cache_size_var, width=10)
+        current_cache_size = self.parent.app_db.get_setting('max_avatar_cache_size', '100')
+        self.cache_size_var.set(current_cache_size)
+        self.cache_size_entry.pack(side=tk.LEFT, padx=(0, 10))
+        
+        ttk.Label(cache_size_frame, text="avatars (0 = unlimited, max 1000 recommended)").pack(anchor=tk.W)
+        
+        # Apply cache size button
+        apply_cache_button = ttk.Button(cache_frame, text="Apply Cache Settings", command=self.apply_cache_settings)
+        apply_cache_button.pack(anchor=tk.W, pady=(5, 0))
+
         # Lazy load MemberManager
         self.member_manager_frame = None
         self.notebook.bind("<<NotebookTabChanged>>", self.on_tab_change)
@@ -224,6 +246,52 @@ class SettingsManager(ttk.Toplevel):
             
         except Exception as e:
             messagebox.showerror("Error", f"Failed to update greeting setting: {str(e)}", parent=self)
+    
+    def apply_cache_settings(self):
+        """Apply cache size settings to the application"""
+        try:
+            cache_size_str = self.cache_size_var.get().strip()
+            
+            if cache_size_str == "":
+                cache_size = 100  # Default value
+            else:
+                cache_size = int(cache_size_str)
+                
+                # Validate range
+                if cache_size < 0:
+                    messagebox.showerror("Error", "Cache size cannot be negative.", parent=self)
+                    return
+                if cache_size > 1000:
+                    messagebox.showwarning("Warning", "Cache size above 1000 may cause memory issues.", parent=self)
+            
+            # Save to database
+            self.parent.app_db.set_setting('max_avatar_cache_size', str(cache_size))
+            
+            # Update the main application's cache size
+            if hasattr(self.parent, 'max_cache_size'):
+                self.parent.max_cache_size = cache_size
+                # Clear and rebuild cache if size changed to prevent exceeding new limit
+                if hasattr(self.parent, 'avatar_cache') and cache_size > 0:
+                    # Limit the cache to new size
+                    self.parent._manage_cache_size(self.parent.avatar_cache, cache_size)
+            
+            # Show success message
+            try:
+                from ttkbootstrap.toast import ToastNotification
+                toast = ToastNotification(
+                    title="Cache Settings Applied!",
+                    message=f"Max avatar cache size set to {cache_size}",
+                    duration=3000,
+                    bootstyle="success"
+                )
+                toast.show_toast()
+            except ImportError:
+                messagebox.showinfo("Success", f"Max avatar cache size set to {cache_size}", parent=self)
+                
+        except ValueError:
+            messagebox.showerror("Error", "Invalid cache size. Please enter a number.", parent=self)
+        except Exception as e:
+            messagebox.showerror("Error", f"Failed to update cache settings: {str(e)}", parent=self)
 
     def on_closing(self):
         # Call the save method of the embedded MemberManager if it was created

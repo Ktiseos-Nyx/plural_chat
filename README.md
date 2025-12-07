@@ -37,6 +37,10 @@ A desktop chat application designed specifically for plural systems, featuring P
 - **📤 Export/Import** - Share system configurations with other plural folks
 - **🖼️ Avatar Support** - Display member avatars in chat
 - **📔 Personal Diary** - Private journal system for individual members
+- **⚙️ Advanced Settings** - Configurable cache sizes to optimize performance based on system resources
+- **🛡️ Enhanced Security** - Improved URL validation and secure file handling
+- **🔄 Improved Stability** - Better error handling and retry mechanisms for network operations
+- **📱 Cross-Platform Support** - Optimized for macOS, Windows, and Linux including better UI responsiveness
 
 ## 📸 Screenshots
 
@@ -49,7 +53,6 @@ A desktop chat application designed specifically for plural systems, featuring P
 ## ⚠️ Known Issues
 
 - **Private Members**: Private members cannot have their avatars downloaded via API (this is expected behavior for privacy protection)
-- **Minor "FINAL STATUS" errors**: Occasional minor errors during sync operations (under investigation)
 - **Sample Members**: Sample members are not added upon developer cleanup (manual setup required for fresh installations)
 
 ## 📋 Project Documentation
@@ -183,6 +186,7 @@ Choose from these beautiful themes:
 - **Requests** - HTTP client for PluralKit API
 - **aiohttp** - Asynchronous HTTP client
 - **aria2p** - High-performance download manager
+- **platformdirs** - Cross-platform directory management
 
 ### Project Structure
 

@@ -9,7 +9,7 @@ from urllib.parse import urlparse
 from io import BytesIO
 
 class MemberList:
-    def __init__(self, parent_frame, logger, avatar_cache, thumbnail_cache, selection_callback, system_db, status_bar):
+    def __init__(self, parent_frame, logger, avatar_cache, thumbnail_cache, selection_callback, system_db, status_bar, app_db=None):
         self.parent_frame = parent_frame
         self.logger = logger
         self.avatar_cache = avatar_cache
@@ -17,9 +17,13 @@ class MemberList:
         self.selection_callback = selection_callback
         self.system_db = system_db
         self.status_bar = status_bar
+        self.app_db = app_db  # For accessing settings
         self.members = [] # This will be populated by load_members
 
         self.thumbnail_references = [] # Keep references to prevent garbage collection
+        # Limit thumbnail cache size to prevent memory issues, configurable in settings
+        max_thumb_cache_size = app_db.get_setting('max_thumbnail_cache_size', '200') if app_db else '200'
+        self.max_thumbnail_cache_size = int(max_thumb_cache_size)
 
         self.setup_ui()
 
@@ -34,6 +38,10 @@ class MemberList:
 
     def load_members(self, members_list):
         """Load members into the list and update the UI."""
+        # Clear thumbnail cache to prevent memory buildup
+        self.thumbnail_cache.clear()
+        self.thumbnail_references.clear()
+        
         self.members = members_list
 
         # Clear existing items
@@ -72,6 +80,15 @@ class MemberList:
                 self.thumbnail_cache[cache_key] = thumbnail
                 # Store reference to prevent garbage collection
                 self.thumbnail_references.append(thumbnail)
+                
+                # Manage cache size to prevent memory issues
+                max_thumb_size = int(self.app_db.get_setting('max_thumbnail_cache_size', '200')) if self.app_db else 200
+                if len(self.thumbnail_cache) > max_thumb_size and max_thumb_size > 0:  # Only manage size if limit > 0
+                    # Remove oldest entries (first ones added)
+                    excess = len(self.thumbnail_cache) - max_thumb_size
+                    keys_to_remove = list(self.thumbnail_cache.keys())[:excess]
+                    for key in keys_to_remove:
+                        del self.thumbnail_cache[key]
 
             # Add to treeview with thumbnail image
             self.tree.insert('', 'end', iid=f"member_{index}",

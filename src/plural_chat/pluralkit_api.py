@@ -7,6 +7,7 @@ from typing import List, Dict, Optional
 from datetime import datetime
 import logging
 from logging.handlers import RotatingFileHandler
+from functools import wraps
 
 
 class PluralKitAPI:
@@ -18,11 +19,78 @@ class PluralKitAPI:
         self.token = token
         self.headers = {"Authorization": token} if token else {}
         self.logger = logging.getLogger('plural_chat.pluralkit_api')
+
+    def retry_on_failure(self, max_retries=3, delay=1, backoff=2, exceptions=(requests.RequestException,)):
+        """
+        Retry decorator for network operations
+        """
+        def decorator(func):
+            @wraps(func)
+            def wrapper(*args, **kwargs):
+                current_delay = delay
+                for attempt in range(max_retries):
+                    try:
+                        return func(*args, **kwargs)
+                    except exceptions as e:
+                        if attempt == max_retries - 1:  # Last attempt
+                            self.logger.error(f"Function {func.__name__} failed after {max_retries} attempts: {e}")
+                            raise e
+                        self.logger.warning(f"Attempt {attempt + 1} failed for {func.__name__}: {e}. Retrying in {current_delay}s...")
+                        time.sleep(current_delay)
+                        current_delay *= backoff
+                return None
+            return wrapper
+        return decorator
     
     def set_token(self, token: str):
         """Set or update the API token"""
         self.token = token
         self.headers = {"Authorization": token}
+    
+    def _make_api_request(self, method, url, **kwargs):
+        """Make API request with retry logic"""
+        max_retries = 3
+        delay = 1
+        backoff = 2
+        
+        for attempt in range(max_retries):
+            try:
+                response = requests.request(method, url, headers=self.headers, **kwargs)
+                
+                # Don't retry on 4xx errors (client errors), only on 5xx/server issues
+                if response.status_code < 500 and response.status_code != 429:
+                    return response
+                elif response.status_code == 429:  # Rate limited
+                    self.logger.warning(f"Rate limited, waiting...")
+                    time.sleep(min(60, 2 ** attempt))  # Exponential backoff, max 60 seconds
+                    continue
+                else:
+                    self.logger.warning(f"Server error {response.status_code}, attempt {attempt + 1}/{max_retries}")
+                    time.sleep(delay)
+                    delay *= backoff
+                    continue
+                    
+            except requests.exceptions.Timeout:
+                self.logger.warning(f"Request timeout, attempt {attempt + 1}/{max_retries}")
+                if attempt == max_retries - 1:
+                    raise
+                time.sleep(delay)
+                delay *= backoff
+            except requests.exceptions.ConnectionError:
+                self.logger.warning(f"Connection error, attempt {attempt + 1}/{max_retries}")
+                if attempt == max_retries - 1:
+                    raise
+                time.sleep(delay)
+                delay *= backoff
+            except requests.exceptions.RequestException as e:
+                self.logger.warning(f"Request error: {e}, attempt {attempt + 1}/{max_retries}")
+                if attempt == max_retries - 1:
+                    raise
+                time.sleep(delay)
+                delay *= backoff
+        
+        # This shouldn't be reached due to the return statements, but just in case
+        raise requests.exceptions.RequestException("Max retries exceeded")
     
     def test_connection(self) -> tuple[bool, str]:
         """Test if the API token works"""
@@ -30,11 +98,7 @@ class PluralKitAPI:
             return False, "No token provided"
         
         try:
-            response = requests.get(
-                f"{self.BASE_URL}/systems/@me",
-                headers=self.headers,
-                timeout=10
-            )
+            response = self._make_api_request('GET', f"{self.BASE_URL}/systems/@me", timeout=10)
             
             if response.status_code == 200:
                 system_data = response.json()
@@ -56,11 +120,7 @@ class PluralKitAPI:
             return None
         
         try:
-            response = requests.get(
-                f"{self.BASE_URL}/systems/@me",
-                headers=self.headers,
-                timeout=10
-            )
+            response = self._make_api_request('GET', f"{self.BASE_URL}/systems/@me", timeout=10)
             
             if response.status_code == 200:
                 return response.json()
@@ -76,11 +136,7 @@ class PluralKitAPI:
             return []
         
         try:
-            response = requests.get(
-                f"{self.BASE_URL}/systems/@me/members",
-                headers=self.headers,
-                timeout=30
-            )
+            response = self._make_api_request('GET', f"{self.BASE_URL}/systems/@me/members", timeout=30)
             
             if response.status_code == 200:
                 return response.json()
@@ -96,11 +152,7 @@ class PluralKitAPI:
             return None
         
         try:
-            response = requests.get(
-                f"{self.BASE_URL}/members/{member_id}",
-                headers=self.headers,
-                timeout=10
-            )
+            response = self._make_api_request('GET', f"{self.BASE_URL}/members/{member_id}", timeout=10)
             
             if response.status_code == 200:
                 return response.json()
@@ -208,7 +260,7 @@ class PluralKitAPI:
             
             self.logger.info(f"Downloading avatar for {member_name}...")
             
-            # Download the image with retry logic
+            # Download the image with retry logic and better error handling
             max_retries = 3
             for attempt in range(max_retries):
                 try:
@@ -219,10 +271,22 @@ class PluralKitAPI:
                         self.logger.warning(f"Rate limited, waiting 5 seconds... (attempt {attempt + 1}/{max_retries})")
                         time.sleep(5)
                         continue
+                    elif response.status_code >= 500:  # Server error
+                        self.logger.warning(f"Server error {response.status_code}, retrying... (attempt {attempt + 1}/{max_retries})")
+                        time.sleep(3)
+                        continue
                     else:
                         self.logger.warning(f"HTTP {response.status_code}, retrying... (attempt {attempt + 1}/{max_retries})")
                         time.sleep(2)
                         continue
+                except requests.exceptions.Timeout:
+                    self.logger.warning(f"Timeout downloading avatar, retrying... (attempt {attempt + 1}/{max_retries})")
+                    time.sleep(2)
+                    continue
+                except requests.exceptions.ConnectionError:
+                    self.logger.warning(f"Connection error, retrying... (attempt {attempt + 1}/{max_retries})")
+                    time.sleep(2)
+                    continue
                 except requests.exceptions.RequestException as e:
                     self.logger.warning(f"Network error: {e}, retrying... (attempt {attempt + 1}/{max_retries})")
                     time.sleep(2)
@@ -233,59 +297,69 @@ class PluralKitAPI:
             
             if response.status_code == 200:
                 # Open image from bytes and convert to WebP
-                original_image = Image.open(BytesIO(response.content))
-                self.logger.info(f"Downloaded image: {original_image.size} pixels, mode: {original_image.mode}")
-                
-                # Smart crop to square (center crop like PK does)
-                width, height = original_image.size
-                if width != height:
-                    self.logger.info(f"Cropping from {width}x{height} to square...")
-                    # Crop to square from center
-                    min_dimension = min(width, height)
-                    left = (width - min_dimension) // 2
-                    top = (height - min_dimension) // 2
-                    right = left + min_dimension
-                    bottom = top + min_dimension
-                    original_image = original_image.crop((left, top, right, bottom))
-                    self.logger.info(f"Cropped to {min_dimension}x{min_dimension}")
-                
-                # Resize to standard avatar size (256x256 like PK)
-                if original_image.size != (256, 256):
-                    self.logger.info(f"Resizing from {original_image.size} to 256x256...")
-                    original_image = original_image.resize((256, 256), Image.Resampling.LANCZOS)
-                
-                # Convert to RGB if needed (WebP doesn't support some modes)
-                if original_image.mode in ('RGBA', 'LA', 'P'):
-                    self.logger.info(f"Converting from {original_image.mode} to RGB...")
-                    # Create white background for transparency
-                    rgb_image = Image.new('RGB', original_image.size, (255, 255, 255))
-                    if original_image.mode == 'P':
-                        original_image = original_image.convert('RGBA')
-                    if 'transparency' in original_image.info:
-                        rgb_image.paste(original_image, mask=original_image.split()[-1])
-                        self.logger.info(f"Applied transparency mask")
-                    else:
-                        rgb_image.paste(original_image)
-                    original_image = rgb_image
-                elif original_image.mode != 'RGB':
-                    self.logger.info(f"Converting from {original_image.mode} to RGB...")
-                    original_image = original_image.convert('RGB')
-                
-                # Save as WebP with 80% quality
-                self.logger.info(f"Saving as WebP with 80% quality...")
-                original_image.save(local_path, 'WEBP', quality=80, optimize=True)
-                
-                # Get file size info
-                original_size = len(response.content)
-                compressed_size = os.path.getsize(local_path)
-                savings = ((original_size - compressed_size) / original_size) * 100
-                self.logger.info(f"Saved avatar for {member_name} - {original_size//1024}KB → {compressed_size//1024}KB ({savings:.1f}% savings)")
-                
-                return local_path
+                try:
+                    original_image = Image.open(BytesIO(response.content))
+                    self.logger.info(f"Downloaded image: {original_image.size} pixels, mode: {original_image.mode}")
+                    
+                    # Smart crop to square (center crop like PK does)
+                    width, height = original_image.size
+                    if width != height:
+                        self.logger.info(f"Cropping from {width}x{height} to square...")
+                        # Crop to square from center
+                        min_dimension = min(width, height)
+                        left = (width - min_dimension) // 2
+                        top = (height - min_dimension) // 2
+                        right = left + min_dimension
+                        bottom = top + min_dimension
+                        original_image = original_image.crop((left, top, right, bottom))
+                        self.logger.info(f"Cropped to {min_dimension}x{min_dimension}")
+                    
+                    # Resize to standard avatar size (256x256 like PK)
+                    if original_image.size != (256, 256):
+                        self.logger.info(f"Resizing from {original_image.size} to 256x256...")
+                        original_image = original_image.resize((256, 256), Image.Resampling.LANCZOS)
+                    
+                    # Convert to RGB if needed (WebP doesn't support some modes)
+                    if original_image.mode in ('RGBA', 'LA', 'P'):
+                        self.logger.info(f"Converting from {original_image.mode} to RGB...")
+                        # Create white background for transparency
+                        rgb_image = Image.new('RGB', original_image.size, (255, 255, 255))
+                        if original_image.mode == 'P':
+                            original_image = original_image.convert('RGBA')
+                        if 'transparency' in original_image.info:
+                            rgb_image.paste(original_image, mask=original_image.split()[-1])
+                            self.logger.info(f"Applied transparency mask")
+                        else:
+                            rgb_image.paste(original_image)
+                        original_image = rgb_image
+                    elif original_image.mode != 'RGB':
+                        self.logger.info(f"Converting from {original_image.mode} to RGB...")
+                        original_image = original_image.convert('RGB')
+                    
+                    # Save as WebP with 80% quality
+                    self.logger.info(f"Saving as WebP with 80% quality...")
+                    original_image.save(local_path, 'WEBP', quality=80, optimize=True)
+                    
+                    # Get file size info
+                    original_size = len(response.content)
+                    compressed_size = os.path.getsize(local_path)
+                    savings = ((original_size - compressed_size) / original_size) * 100
+                    self.logger.info(f"Saved avatar for {member_name} - {original_size//1024}KB → {compressed_size//1024}KB ({savings:.1f}% savings)")
+                    
+                    return local_path
+                except Image.UnidentifiedImageError:
+                    self.logger.error(f"Downloaded content is not a valid image for {member_name}")
+                    return None
+                except Exception as img_error:
+                    self.logger.error(f"Error processing image for {member_name}: {img_error}")
+                    return None
             else:
                 self.logger.error(f"Failed to download avatar for {member_name}: HTTP {response.status_code}")
                 return None
                 
+        except OSError as e:
+            self.logger.error(f"File system error downloading avatar for {member_name}: {e}")
+            return None
         except Exception as e:
             self.logger.error(f"Error downloading avatar for {member_name}: {e}")
             return None

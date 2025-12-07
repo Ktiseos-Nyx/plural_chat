@@ -34,19 +34,34 @@ class PKSyncWorker:
             handler.setFormatter(formatter)
             self.logger.addHandler(handler)
         
+        # Rate limiting for status updates to prevent UI flooding
+        self.last_status_time = 0
+        self.min_status_interval = 0.5  # At least 500ms between status updates
+        
     def write_status(self, status, message="", progress=0, data=None):
-        """Write status to file for main app to read"""
+        """Write status to file for main app to read with rate limiting"""
+        current_time = time.time()
+        
+        # Rate limit: don't write status more than once per interval
+        if current_time - self.last_status_time < self.min_status_interval:
+            return  # Skip update if too frequent
+        
         status_data = {
             "status": status,  # "running", "complete", "error"
             "message": message,
             "progress": progress,  # 0-100
-            "timestamp": time.time(),
+            "timestamp": current_time,
             "data": data or {}
         }
         
         try:
-            with open(self.status_file, 'w') as f:
+            # Write to a temporary file first to avoid race conditions
+            temp_file = self.status_file + ".tmp"
+            with open(temp_file, 'w') as f:
                 json.dump(status_data, f)
+            # Atomically move the temp file to the real file
+            os.rename(temp_file, self.status_file)
+            self.last_status_time = current_time
         except Exception as e:
             print(f"Failed to write status: {e}")
     
@@ -71,6 +86,8 @@ class PKSyncWorker:
             self.write_status("running", "Syncing members...", 30)
             
             # Perform sync (without downloading avatars - we'll use aria2 for that)
+            # Update status to indicate we're starting member sync
+            self.write_status("running", "Syncing members from PluralKit...", 25)
             new_count, updated_count, errors = self.pk_sync.sync_members(download_avatars=False)
             
             self.write_status("running", "Members synced, checking avatars...", 60)
@@ -78,14 +95,19 @@ class PKSyncWorker:
             # Use aria2 for ultra-fast avatar downloading if enabled
             if self.download_avatars:
                 self._download_avatars_with_aria2()
+                # Ensure final progress update after avatar downloads
+                self.write_status("running", "Sync completed, processing results...", 95)
             
+            # Ensure final status update
+            total_errors = errors or []
             self.write_status("complete", "Sync completed successfully", 100, {
                 "new_count": new_count,
                 "updated_count": updated_count, 
-                "errors": errors
+                "errors": total_errors
             })
             
         except Exception as e:
+            self.logger.error(f"Sync members operation failed: {e}")
             self.write_status("error", f"Sync failed: {str(e)}")
     
     def _download_avatars_with_aria2(self):
@@ -96,8 +118,11 @@ class PKSyncWorker:
             
             def status_callback(status, message, progress=60):
                 # Map aria2 progress to our overall progress (60-95%)
+                # Only update if status changed significantly or enough time has passed
                 overall_progress = 60 + (progress * 0.35)  
                 self.write_status("running", f"🚀 {message}", int(overall_progress))
+                # Add a small delay to allow UI to process other events
+                time.sleep(0.05)  # Small delay to prevent overwhelming the UI
             
             # Create aria2 downloader
             downloader = Aria2AvatarDownloader(self.logger, status_callback)
@@ -123,7 +148,11 @@ class PKSyncWorker:
         except Exception as e:
             self.logger.error(f"Error in aria2 avatar download: {e}")
             # Fallback to sequential if aria2 fails
-            self._download_avatars_sequential(members)
+            try:
+                members = self.system_db.get_all_members()
+                self._download_avatars_sequential(members)
+            except Exception as fallback_error:
+                self.logger.error(f"Fallback avatar download also failed: {fallback_error}")
     
     def _download_avatars_sequential(self, members):
         """Fallback method for avatar downloads without aria2"""
@@ -174,7 +203,8 @@ class PKSyncWorker:
             
             self.write_status("running", "Importing system...", 30)
             
-            # Perform import
+            # Perform import with better progress tracking
+            self.write_status("running", "Importing system data...", 25)
             success, message, stats = self.pk_sync.import_full_system(self.download_avatars)
             
             if success:

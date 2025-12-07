@@ -25,10 +25,12 @@ class ThemeManager:
     def apply_theme(self, theme_name):
         """Apply theme with proper error handling - NO NUCLEAR OPTIONS"""
         try:
-            # Simple and clean
-            self.root.style.theme_use(theme_name)
-            self.current_theme = theme_name
-            print(f"✅ Applied theme: {theme_name}")
+            # Only apply if it's different from the current theme
+            if self.current_theme != theme_name:
+                # Simple and clean
+                self.root.style.theme_use(theme_name)
+                self.current_theme = theme_name
+                print(f"✅ Applied theme: {theme_name}")
             return True
         except Exception as e:
             print(f"❌ Theme failed: {e}")

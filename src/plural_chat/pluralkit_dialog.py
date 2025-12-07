@@ -171,9 +171,12 @@ class PluralKitDialog:
             messagebox.showerror("Error", "Please save a valid token first")
             return
         
+        # Provide immediate visual feedback
         self.progress_label.config(text="Starting sync...")
         self.progress_bar.start()
-        self.sync_button.config(state=DISABLED)
+        self.sync_button.config(state=DISABLED, text="Syncing...")
+        # Update the UI immediately to show the change
+        self.dialog.update_idletasks()
         
         # Create temporary status file
         self.status_file = tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False)
@@ -213,8 +216,9 @@ class PluralKitDialog:
                     message = status_data.get('message', '')
                     progress = status_data.get('progress', 0)
                     
-                    # Update UI
-                    self.progress_label.config(text=message)
+                    # Update UI - only if message changed to reduce UI updates
+                    if self.progress_label.cget('text') != message:
+                        self.progress_label.config(text=message)
                     
                     if status == 'complete':
                         data = status_data.get('data', {})
@@ -228,14 +232,20 @@ class PluralKitDialog:
                         
                 except (FileNotFoundError, json.JSONDecodeError):
                     pass  # Status file not ready yet
+                except Exception as e:
+                    # More specific error handling
+                    self.logger.warning(f"Error reading status file: {e}")
                 
-                # Continue monitoring
-                self.dialog.after(500, self.monitor_sync_process)
+                # Continue monitoring - reduced frequency to prevent UI stalls
+                self.dialog.after(1000, self.monitor_sync_process)  # Changed from 500ms to 1000ms
             else:
                 # Process finished, check final status
                 returncode = self.worker_process.returncode
                 if returncode != 0:
-                    stderr = self.worker_process.stderr.read().decode()
+                    try:
+                        stderr = self.worker_process.stderr.read().decode()
+                    except:
+                        stderr = "Unknown error"
                     self.sync_error(f"Worker process failed: {stderr}")
                 else:
                     # Check final status
@@ -250,10 +260,16 @@ class PluralKitDialog:
                                              data.get('errors', []))
                         else:
                             self.sync_error(status_data.get('message', 'Unknown error'))
-                    except:
+                    except FileNotFoundError:
+                        self.sync_error("Status file not found at completion")
+                    except json.JSONDecodeError:
+                        self.sync_error("Status file contains invalid JSON")
+                    except Exception as e:
+                        self.logger.error(f"Error reading final status: {e}")
                         self.sync_error("Failed to read final status")
         
         except Exception as e:
+            self.logger.error(f"Monitor error: {e}")
             self.sync_error(f"Monitor error: {e}")
     
     def full_import(self):
@@ -266,9 +282,12 @@ class PluralKitDialog:
             messagebox.showerror("Error", "Please save a valid token first")
             return
         
+        # Provide immediate visual feedback
         self.progress_label.config(text="Starting import...")
         self.progress_bar.start()
-        self.import_button.config(state=DISABLED)
+        self.import_button.config(state=DISABLED, text="Importing...")
+        # Update the UI immediately to show the change
+        self.dialog.update_idletasks()
         
         # Create temporary status file
         self.status_file = tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False)
@@ -308,8 +327,9 @@ class PluralKitDialog:
                     message = status_data.get('message', '')
                     progress = status_data.get('progress', 0)
                     
-                    # Update UI
-                    self.progress_label.config(text=message)
+                    # Update UI - only if message changed to reduce UI updates
+                    if self.progress_label.cget('text') != message:
+                        self.progress_label.config(text=message)
                     
                     if status == 'complete':
                         data = status_data.get('data', {})
@@ -321,14 +341,20 @@ class PluralKitDialog:
                         
                 except (FileNotFoundError, json.JSONDecodeError):
                     pass  # Status file not ready yet
+                except Exception as e:
+                    # More specific error handling
+                    self.logger.warning(f"Error reading status file: {e}")
                 
-                # Continue monitoring
-                self.dialog.after(500, self.monitor_import_process)
+                # Continue monitoring - reduced frequency to prevent UI stalls
+                self.dialog.after(1000, self.monitor_import_process)  # Changed from 500ms to 1000ms
             else:
                 # Process finished, check final status
                 returncode = self.worker_process.returncode
                 if returncode != 0:
-                    stderr = self.worker_process.stderr.read().decode()
+                    try:
+                        stderr = self.worker_process.stderr.read().decode()
+                    except:
+                        stderr = "Unknown error"
                     self.import_error(f"Worker process failed: {stderr}")
                 else:
                     # Check final status
@@ -341,16 +367,22 @@ class PluralKitDialog:
                             self.import_complete(True, status_data.get('message', 'Import complete'), data)
                         else:
                             self.import_error(status_data.get('message', 'Unknown error'))
-                    except:
+                    except FileNotFoundError:
+                        self.import_error("Status file not found at completion")
+                    except json.JSONDecodeError:
+                        self.import_error("Status file contains invalid JSON")
+                    except Exception as e:
+                        self.logger.error(f"Error reading final status: {e}")
                         self.import_error("Failed to read final status")
         
         except Exception as e:
+            self.logger.error(f"Monitor error: {e}")
             self.import_error(f"Monitor error: {e}")
     
     def sync_complete(self, new_count, updated_count, errors):
         """Handle sync completion"""
         self.progress_bar.stop()
-        self.sync_button.config(state=NORMAL)
+        self.sync_button.config(state=NORMAL, text="Sync Members")  # Restore original text
         
         if errors:
             error_msg = "\n".join(errors[:5])  # Show first 5 errors
@@ -371,7 +403,7 @@ class PluralKitDialog:
     def import_complete(self, success, message, stats):
         """Handle import completion"""
         self.progress_bar.stop()
-        self.import_button.config(state=NORMAL)
+        self.import_button.config(state=NORMAL, text="Full Import")  # Restore original text
         
         if success:
             self.progress_label.config(text="Import complete")
@@ -392,14 +424,14 @@ class PluralKitDialog:
     def sync_error(self, error):
         """Handle sync error"""
         self.progress_bar.stop()
-        self.sync_button.config(state=NORMAL)
+        self.sync_button.config(state=NORMAL, text="Sync Members")  # Restore original text
         self.progress_label.config(text="Sync failed")
         messagebox.showerror("Sync Error", f"Failed to sync: {error}")
     
     def import_error(self, error):
         """Handle import error"""
         self.progress_bar.stop()
-        self.import_button.config(state=NORMAL)
+        self.import_button.config(state=NORMAL, text="Full Import")  # Restore original text
         self.progress_label.config(text="Import failed")
         messagebox.showerror("Import Error", f"Failed to import: {error}")
     
