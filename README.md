@@ -238,8 +238,8 @@ For third-party components and attributions, see [NOTICES.md](NOTICES.md).
 - **[PluralKit](https://pluralkit.me)** - The bot that inspired this project
 - **[ttkbootstrap](https://ttkbootstrap.readthedocs.io)** - Modern tkinter themes
 - **[Support us](https://ko-fi.com/duskfallcrew)** - Help keep development going
-- **[Ktiseos Nyx Discord](https://discord.gg/HhBSvM9gBY)** - Development & AI Discord (Plural Friendly!)
-- **[Earth & Dusk Media Discord](https://discord.gg/5t2kYxt7An)** - Our Twitch & Media Discord (PK enabled!)
+- **[Ktiseos Nyx Discord](https://discord.gg/HhBSvM9gBY)** - Development & AI Discord (Plural Friendly!/PK Enabled)
+- **[Earth & Dusk Media Discord](https://discord.gg/5t2kYxt7An)** - Our Twitch & Media Discord (PK enabled!) **IF YOU ARE NOT INTO AI PLEASE JOIN HERE**
 
 ---
 
