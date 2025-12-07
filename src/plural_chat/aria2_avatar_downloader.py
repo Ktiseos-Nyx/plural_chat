@@ -12,14 +12,16 @@ import time
 from pathlib import Path
 from PIL import Image
 import shutil
+import platformdirs
 
 
 class Aria2AvatarDownloader:
     def __init__(self, logger, status_callback=None):
         self.logger = logger
         self.status_callback = status_callback
-        self.download_dir = Path("avatars")
-        self.download_dir.mkdir(exist_ok=True)
+        data_dir = Path(platformdirs.user_data_dir("PluralChat", "DuskfallCrew"))
+        self.download_dir = data_dir / "avatars"
+        self.download_dir.mkdir(parents=True, exist_ok=True)
         
     def check_aria2_available(self):
         """Check if aria2c is installed"""

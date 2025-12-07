@@ -3,6 +3,8 @@ import json
 import base64
 import os
 import hashlib
+from pathlib import Path
+import platformdirs
 from datetime import datetime
 from typing import List, Dict, Optional, Tuple
 from cryptography.fernet import Fernet
@@ -13,8 +15,13 @@ from logging.handlers import RotatingFileHandler
 class AppDatabase:
     """Manages app-level settings and preferences"""
     
-    def __init__(self, db_path="app.db"):
-        self.db_path = db_path
+    def __init__(self, db_path=None):
+        if db_path is None:
+            data_dir = Path(platformdirs.user_data_dir("PluralChat", "DuskfallCrew"))
+            data_dir.mkdir(parents=True, exist_ok=True)
+            self.db_path = data_dir / "app.db"
+        else:
+            self.db_path = db_path
         self._encryption_key = None
         self.init_database()
         self.logger = logging.getLogger('plural_chat.app_database')
@@ -59,10 +66,12 @@ class AppDatabase:
         if self._encryption_key:
             return self._encryption_key
         
-        # Try to get existing key from environment or generate new one
-        key_file = ".app_key"
+        # Use platformdirs for the key file as well
+        key_dir = Path(platformdirs.user_data_dir("PluralChat", "DuskfallCrew"))
+        key_dir.mkdir(parents=True, exist_ok=True)
+        key_file = key_dir / ".app_key"
         
-        if os.path.exists(key_file):
+        if key_file.exists():
             try:
                 with open(key_file, 'rb') as f:
                     self._encryption_key = f.read()
@@ -173,8 +182,13 @@ class AppDatabase:
 class SystemDatabase:
     """Manages plural system data (members, messages, etc.)"""
     
-    def __init__(self, db_path="system.db"):
-        self.db_path = db_path
+    def __init__(self, db_path=None):
+        if db_path is None:
+            data_dir = Path(platformdirs.user_data_dir("PluralChat", "DuskfallCrew"))
+            data_dir.mkdir(parents=True, exist_ok=True)
+            self.db_path = data_dir / "system.db"
+        else:
+            self.db_path = db_path
         self.init_database()
         self.logger = logging.getLogger('plural_chat.system_database')
     

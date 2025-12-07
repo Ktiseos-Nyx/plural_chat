@@ -141,20 +141,14 @@ Copyright © 2025 Duskfallcrew aka The Duskfall Portal Crew, of Ktiseos Nyx"""
     def create_kofi_button(self, parent_frame):
         """Create Ko-fi support button with logo"""
         try:
-            # Load Ko-fi logo
-            kofi_logo_path = os.path.join(os.path.dirname(__file__), "kofi_logo.webp")
-            print(f"🔍 Looking for Ko-fi logo at: {kofi_logo_path}")
-            print(f"🔍 Logo exists: {os.path.exists(kofi_logo_path)}")
-            
-            if os.path.exists(kofi_logo_path):
-                # Load and resize the Ko-fi logo
+            from importlib import resources
+            # Load Ko-fi logo using importlib.resources for package data
+            with resources.path('plural_chat', 'kofi_logo.webp') as kofi_logo_path:
                 kofi_image = Image.open(kofi_logo_path)
-                print(f"🎨 Original logo size: {kofi_image.size}")
                 
-                # Resize to button-appropriate size (bigger for visibility)
+                # Resize to button-appropriate size
                 kofi_image = kofi_image.resize((80, 26), Image.Resampling.LANCZOS)
                 kofi_photo = ImageTk.PhotoImage(kofi_image)
-                print("✅ Ko-fi logo loaded successfully")
                 
                 # Create button with logo
                 kofi_button = ttk.Button(
@@ -166,21 +160,12 @@ Copyright © 2025 Duskfallcrew aka The Duskfall Portal Crew, of Ktiseos Nyx"""
                     bootstyle="warning"
                 )
                 kofi_button.pack(side=LEFT, padx=(0, 10))
-                print("✅ Ko-fi button created and packed")
                 
                 # Keep reference to prevent garbage collection
                 kofi_button.image = kofi_photo
                 
-            else:
-                print("⚠️ Ko-fi logo not found, using text-only button")
-                # Fallback to text-only button if logo not found
-                ttk.Button(parent_frame, text="☕ Support on Ko-fi", 
-                          command=lambda: self.open_url("https://ko-fi.com/duskfallcrew/"), 
-                          bootstyle="warning-outline").pack(side=LEFT, padx=(0, 10))
-                
-        except Exception as e:
-            print(f"❌ Error creating Ko-fi button: {e}")
-            self.logger.error(f"Error creating Ko-fi button: {e}")
+        except (ImportError, FileNotFoundError, Exception) as e:
+            self.logger.error(f"Error creating Ko-fi button with logo: {e}")
             # Fallback to text-only button
             ttk.Button(parent_frame, text="☕ Support on Ko-fi", 
                       command=lambda: self.open_url("https://ko-fi.com/duskfallcrew/"), 

@@ -3,6 +3,55 @@
 *.sqlite
 *.sqlite3
 
+# Ignore Next.js branch code for this branch
+web/
+
+# --- Python Basics ---
+__pycache__/
+*.py[cod]
+*$py.class
+
+# --- Virtual Environments ---
+# Ignore the folder where your libraries are installed
+.venv/
+venv/
+env/
+ENV/
+
+# --- Distribution / Install Artifacts ---
+# Generated when you run 'pip install .'
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# --- Project Specifics ---
+# IMPORTANT: Don't upload your chat history!
+*.db
+*.sqlite
+*.sqlite3
+
+# Logs and Debugging
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# --- IDEs and Editors ---
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# --- OS Specific ---
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# --- Downloads / Temp Files ---
+# If your downloader saves temp files
+*.aria2
+
 # Personal data directories
 avatars/*
 !avatars/default_avatar.png

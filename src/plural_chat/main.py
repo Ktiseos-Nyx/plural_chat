@@ -17,6 +17,8 @@ import logging
 from logging.handlers import RotatingFileHandler
 import threading
 import time
+from pathlib import Path
+import platformdirs
 
 from .member_manager import MemberManager
 from .settings_manager import SettingsManager
@@ -69,7 +71,7 @@ class PluralChat:
                 size=(900, 700)
             )
         except Exception as e:
-            print(f"❌ Error creating window: {e}")
+            self.logger.error(f"Error creating window: {e}")
             # Ultimate fallback
             self.root = ttk.Window(
                 title="Plural Chat",
@@ -104,12 +106,14 @@ class PluralChat:
         # Hide window initially while we set it up
         self.root.withdraw()
 
+        # Add a timer for debouncing the input
+        self.debounce_timer = None
+
         # Setup UI and load data
         self.setup_ui()
         self.load_font_settings()  # Load font settings after UI is created
 
         # Apply the correct theme after UI is created
-        print(f"🎨 Applying theme after UI setup: {theme}")
         self.change_theme(theme)
 
         self.load_members()
@@ -126,7 +130,9 @@ class PluralChat:
 
     def setup_logging(self, level=logging.INFO):
         self.logger = logging.getLogger('plural_chat')
-        log_file = os.path.join(os.path.dirname(__file__), 'logs', 'plural_chat.log')
+        log_dir = Path(platformdirs.user_log_dir("PluralChat", "DuskfallCrew"))
+        log_dir.mkdir(parents=True, exist_ok=True)
+        log_file = log_dir / "plural_chat.log"
         handler = RotatingFileHandler(log_file, maxBytes=10 * 1024 * 1024, backupCount=5) # 10 MB
         formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
         handler.setFormatter(formatter)
@@ -327,8 +333,25 @@ class PluralChat:
             # Only load local files (not URLs)
             if not avatar_path.startswith(('http://', 'https://')):
                 try:
+                    path_to_open = Path(avatar_path)
+                    if not path_to_open.is_absolute():
+                        # It might be a package resource like 'default_avatar.png'
+                        try:
+                            from importlib import resources
+                            # Use resources.files for modern importlib
+                            with resources.as_file(resources.files('plural_chat').joinpath(path_to_open.name)) as p:
+                                path_to_open = p
+                        except (FileNotFoundError, ModuleNotFoundError):
+                            # Or it might be a relative path from the old data structure, now in the user data dir
+                            data_dir = Path(platformdirs.user_data_dir("PluralChat", "DuskfallCrew"))
+                            path_to_open = data_dir / "avatars" / avatar_path
+                    
+                    if not Path(path_to_open).exists():
+                        self.logger.warning(f"Avatar file not found for {member_name} at {path_to_open}")
+                        continue
+
                     # Load avatar into cache
-                    img = Image.open(avatar_path).resize((30, 30), Image.Resampling.LANCZOS)
+                    img = Image.open(path_to_open).resize((30, 30), Image.Resampling.LANCZOS)
                     avatar_image = ImageTk.PhotoImage(img)
                     self.avatar_cache[member_name] = avatar_image
                     
@@ -559,15 +582,30 @@ class PluralChat:
         return safe_id
 
     def on_message_change(self, event=None):
-        """Handle message text changes for live proxy detection"""
+        """Debounce handler for message text changes."""
+        # Cancel any existing timer
+        if self.debounce_timer:
+            self.root.after_cancel(self.debounce_timer)
+
+        # Start a new timer to call the proxy check after 300ms
+        self.debounce_timer = self.root.after(300, self.perform_proxy_check)
+
+    def perform_proxy_check(self):
+        """Handle message text changes for live proxy detection after a debounce delay."""
         message_text = self.message_entry.get("1.0", tk.END).strip()
+
+        # Get the default background color from the current theme to properly reset it
+        try:
+            style = ttk.Style()
+            default_bg = style.lookup('TText', 'background')
+        except tk.TclError:
+            default_bg = 'white' # Fallback for when theme is not fully ready
 
         if not message_text:
             # Reset everything when empty
-            # ttk.Text auto-styles with theme, no config needed
-            pass
             self.proxy_indicator.config(text="")
-            self.status_bar.config(text="Ready")
+            self.update_status_greeting()
+            self.message_entry.config(bg=default_bg)
             return
 
         detected_member, clean_message = self.detect_proxy_member(message_text)
@@ -578,13 +616,12 @@ class PluralChat:
             self.current_member = detected_member
 
             # Show visual feedback
-            # Keep light green for proxy detection visual feedback
             self.message_entry.config(bg="#e8f5e8")
             self.proxy_indicator.config(text="🔍 Proxy detected")
             self.status_bar.config(text=f"Proxy detected: {detected_member['name']}")
         else:
-            # Reset to default - remove the bg config since ttk.Text auto-styles with theme
-            # self.message_entry.config(bg='')  # This breaks with empty string!
+            # Reset to default
+            self.message_entry.config(bg=default_bg)
             self.proxy_indicator.config(text="")
 
             # Smart proxy suggestions in status bar
@@ -592,7 +629,7 @@ class PluralChat:
             if suggestion:
                 self.status_bar.config(text=suggestion)
             else:
-                self.status_bar.config(text="Ready")
+                self.update_status_greeting() # Reset to the default greeting
 
     def ensure_avatar_downloaded(self, member):
         """Download and cache avatar if it's a URL and not already downloaded"""
@@ -611,26 +648,26 @@ class PluralChat:
                 self.status_bar.config(text=f"🚫 Blocked unsafe avatar URL for {member_name}")
                 return
 
-            # Create avatars directory if it doesn't exist with secure permissions
-            avatars_dir = 'avatars'
-            os.makedirs(avatars_dir, exist_ok=True)
-            os.chmod(avatars_dir, 0o755)  # Secure directory permissions
-            self.logger.info(f"Ensured avatars directory exists")
+            # Create avatars directory if it doesn't exist
+            data_dir = Path(platformdirs.user_data_dir("PluralChat", "DuskfallCrew"))
+            avatars_dir = data_dir / "avatars"
+            avatars_dir.mkdir(parents=True, exist_ok=True)
+            self.logger.info(f"Ensured avatars directory exists at {avatars_dir}")
 
             # 🔒 SECURITY: Generate safe local filename
             member_id = member.get('id') or member.get('pk_id', 'unknown')
             safe_id = self._sanitize_filename(member_id)
-            local_filename = f"avatars/member_{safe_id}.webp"
+            local_filename = avatars_dir / f"member_{safe_id}.webp"
             self.logger.info(f"Safe local filename: {local_filename}")
 
             # Skip if already downloaded
-            if os.path.exists(local_filename):
+            if local_filename.exists():
                 self.logger.info(f"Avatar already exists locally")
                 # Update database to point to local file if it's still pointing to URL
                 if member['avatar_path'].startswith(('http://', 'https://')):
                     self.logger.info(f"Updating database to point to local file")
-                    self.system_db.update_member(member['id'], avatar_path=local_filename)
-                    member['avatar_path'] = local_filename
+                    self.system_db.update_member(member['id'], avatar_path=str(local_filename))
+                    member['avatar_path'] = str(local_filename)
                 return
 
             self.logger.info(f"Starting download...")
@@ -696,8 +733,8 @@ class PluralChat:
 
                 # Update database to point to local file
                 self.logger.info(f"Updating database with local path...")
-                self.system_db.update_member(member['id'], avatar_path=local_filename)
-                member['avatar_path'] = local_filename
+                self.system_db.update_member(member['id'], avatar_path=str(local_filename))
+                member['avatar_path'] = str(local_filename)
 
                 # Refresh avatar cache
                 self.logger.info(f"Refreshing UI avatar cache...")
@@ -839,20 +876,14 @@ class PluralChat:
         return "break"
 
     def open_settings_manager(self):
-        print("🔧 Settings button clicked!")
         try:
-            print("🔧 Creating SettingsManager...")
             settings = SettingsManager(self.root, self)
-            print("✓ Settings dialog created successfully")
             # Ensure the dialog is visible and focused
             settings.deiconify()  # Make sure it's not iconified
             settings.lift()       # Bring to front
             settings.focus_set()  # Give it focus
-            print("✓ Settings dialog made visible and focused")
         except Exception as e:
-            print(f"❌ Error opening settings: {e}")
-            import traceback
-            traceback.print_exc()
+            self.logger.error(f"Error opening settings: {e}")
             messagebox.showerror("Settings Error", f"Failed to open settings: {e}")
 
     def load_chat_history(self):
@@ -1003,10 +1034,9 @@ class PluralChat:
                 style.configure('TLabelFrame.Label', background=theme_bg, foreground=theme_fg)
 
             except Exception as e:
-                print(f"❌ Nuclear option failed: {e}")
+                self.logger.error(f"Nuclear option failed: {e}")
 
-            print(f"🎨 Forced theme override with bg={theme_bg}, fg={theme_fg}")
-            print(f"💣 NUCLEAR OPTION: Forced main window and member list!")
+            self.logger.info(f"Forced theme override with bg={theme_bg}, fg={theme_fg}")
 
         except Exception as e:
             self.logger.error(f"Error forcing theme override: {e}")
