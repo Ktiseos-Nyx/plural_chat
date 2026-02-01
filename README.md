@@ -2,6 +2,17 @@
 
 A desktop chat application designed specifically for plural systems, featuring PluralKit integration and intelligent proxy detection.
 
+Notice: If you're looking for support and you're a plural system yourself please join our NON ML/AI server that's for plurals! 
+
+https://discord.gg/QCkgPwf7ue
+
+Also: We're working on moving this to electron, because a lot of python is slow with i/o work, and now that Duskfalcrew is on windows --
+We're able to service more people both crossplatform and otherwise!
+
+If you're NOT INTO AI and not plural feel free to go to our main E&D server for support here: https://discord.gg/5t2kYxt7An
+
+Duskfallcrew is largely moving away from generative media AI, and so the KNX discord may be merging back with E&D at some stage! 
+
 ## 📑 Table of Contents
 
 - [✨ Features](#-features)
