@@ -6,12 +6,28 @@ Notice: If you're looking for support and you're a plural system yourself please
 
 https://discord.gg/QCkgPwf7ue
 
-Also: We're working on moving this to electron, because a lot of python is slow with i/o work, and now that Duskfalcrew is on windows --
-We're able to service more people both crossplatform and otherwise!
-
 If you're NOT INTO AI and not plural feel free to go to our main E&D server for support here: https://discord.gg/5t2kYxt7An
 
-Duskfallcrew is largely moving away from generative media AI, and so the KNX discord may be merging back with E&D at some stage! 
+## **NOTICE**
+
+Ktiseos Nyx is SHELVING/ARCHIVING pluralchat for SECURITY REASONS. Not personal reasons. 
+The amount of security required to keep systems and those requiring this sort of app is INTENSE, and with the amount of rogue LLM's and agentic tools out there, we don't need to be responsible for data theft or otherwise.  The Python version is "CUTE" and "NEAT" but at the moment: it does not service enough security to function safely.  
+
+ENV files are "SECURE" but they're about as secure as 2018 encryption for something that has to do with connecting to other services.  If this were an AI focused app, we would NOT hesitate to keep going - because security moves differently in AI circles.  Pluralchat's next/react version has barely any security to it, and runs off the smell of localhost er an oily rag.  
+
+We FULLY appreciate that people have picked this up, and we understand that we've stated about RETIRING from genAI before, but that's a totally other subject and you'll have to connect via discord for that.
+
+As for support: WE WILL still take support requests for the app even after archiving, but only for the archived edition - not for anyone's forks.  Archival enables someone else in the community to fork, and continue the development.
+
+Please note that we DO NOT have servers for this, so if you have tried to use our next/react version on a server and found a "UNSECURE DOMAIN" of sorts? We are not affiliated with MaplePet. In fact this is the OTHER reason why we're archiving: Anyone and everyone in open source can fork, serve and host these tools. But since wer'e the original developer of this particular edition: We're responsible for code.
+
+If you host without forking: We do not have a lot of support, the next/react edition is not secure and never finished. 
+
+If you use the python edition without forking: we DO offer minimal support. 
+
+PLEASE DO FORK = you're even welcome to COPY OVER THE CODE and redevelop, this is esentially like Twinote + SimplyPlural and a bunch of stuff inbetween. We're just not as focused on plural ONLY content due to the immense security required for data integrity for mental health and plural systems. 
+
+If this was just for RP or otherwise we'd not worry AS much. 
 
 ## 📑 Table of Contents
 
