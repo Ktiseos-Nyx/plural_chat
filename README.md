@@ -8,7 +8,17 @@ https://discord.gg/QCkgPwf7ue
 
 If you're NOT INTO AI and not plural feel free to go to our main E&D server for support here: https://discord.gg/5t2kYxt7An
 
-## **NOTICE**
+## **NOTICE — WE'RE BACK (Oct 2026) 🚧**
+
+Plural Chat is being REVIVED. Give us time — planning is in active progress, the old web edition was a security-and-scope mess (see below for why we shelved it) and we're rebuilding dialed-down and local-first.
+
+**On AI, stated plainly:** We ARE using agentic AI tooling to help build this — MINIMAL assistance, for time and learning reasons (Dusk is the sole human on this and wants to learn to read and audit the code herself). **No AI / no LLM / no generative features will be implemented IN the final code.** The app will stay a clean, local-first tool for plural systems — nothing you say is shipped off to any model by the product itself.
+
+**Developers — specifically full-stack folks who DON'T use AI:** you're welcome and extra welcome. This is open source; we can't pay — we pay in hugs, smiles, and eternal gratitude. 💜 Helping keep a kids-and-systems privacy bar high without burning Dusk out is where the value is.
+
+*(The notice below is kept for honesty/historical reasons — it explains the shelving that this revival is fixing.)*
+
+## **NOTICE (ARCHIVED — why we shelved it)**
 
 Ktiseos Nyx is SHELVING/ARCHIVING pluralchat for SECURITY REASONS. Not personal reasons. 
 The amount of security required to keep systems and those requiring this sort of app is INTENSE, and with the amount of rogue LLM's and agentic tools out there, we don't need to be responsible for data theft or otherwise.  The Python version is "CUTE" and "NEAT" but at the moment: it does not service enough security to function safely.  
