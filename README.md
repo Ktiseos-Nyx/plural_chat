@@ -14,7 +14,7 @@ Plural Chat is being REVIVED. Give us time — planning is in active progress, t
 
 **On AI, stated plainly:** We ARE using agentic AI tooling to help build this — MINIMAL assistance, for time and learning reasons (Dusk is the sole human on this and wants to learn to read and audit the code herself). **No AI / no LLM / no generative features will be implemented IN the final code.** The app will stay a clean, local-first tool for plural systems — nothing you say is shipped off to any model by the product itself.
 
-**Developers — specifically full-stack folks who DON'T use AI:** you're welcome and extra welcome. This is open source; we can't pay — we pay in hugs, smiles, and eternal gratitude. 💜 Helping keep a kids-and-systems privacy bar high without burning Dusk out is where the value is.
+**Developers — specifically full-stack folks who DON'T use AI:** you're welcome and extra welcome. This is open source; we can't pay — we pay in hugs, smiles, and eternal gratitude. 💜 Helping keep a privacy bar high for plural systems without burning Dusk out is where the value is.
 
 *(The notice below is kept for honesty/historical reasons — it explains the shelving that this revival is fixing.)*
 
